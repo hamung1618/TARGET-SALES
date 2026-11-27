@@ -2610,10 +2610,20 @@ self.onmessage = function(e){
   document.addEventListener('click', function(e){ const d = document.getElementById('s1Dd'); if (d && d.style.display === 'block' && !e.target.closest('#s1Pick')) d.style.display = 'none'; });
   /* ===== Tab Atur Sub Kategori Produk (pengaturan manual per produk Rupa Rupa) ===== */
   let s18Q = '', s18Show = '', s18Names = [], s18Sel = new Set();
+  /* Daftar produk = SEMUA produk di database (tidak terpengaruh filter bulan/sales/dll). */
+  let s18All = null;
   function s18Products(){
-    const set = new Set((allProductsMeta || []).filter(p => p && !isFitriProduct(p)));
-    (R && R.s1 || []).forEach(x => { if (x && x[0] && !isFitriProduct(x[0])) set.add(x[0]); });
-    return [...set].sort((a, b) => String(a).localeCompare(String(b), 'id'));
+    const m = new Map();
+    (s18All || allProductsMeta || []).forEach(p => { const k = U(p); if (k && !isFitriProduct(p) && !m.has(k)) m.set(k, String(p).trim()); });
+    return [...m.values()].sort((a, b) => a.localeCompare(b, 'id'));
+  }
+  async function s18LoadAll(){
+    try {
+      let names = [];
+      if (useIDB && db) names = await db.tx.orderBy('produk').uniqueKeys();
+      else names = (rows || []).map(x => x.produk ?? x.Produk);
+      s18All = [...names, ...(allProductsMeta || [])].map(x => String(x ?? '').trim()).filter(Boolean);
+    } catch(e){ console.warn('s18LoadAll', e); s18All = null; }
   }
   function s18Opts(sel, autoLabel){
     return '<option value=""' + (!sel ? ' selected' : '') + '>Otomatis' + (autoLabel ? ' (' + escHtml(autoLabel) + ')' : '') + '</option>'
@@ -2662,6 +2672,7 @@ self.onmessage = function(e){
       + '<button type="button" class="pager-btn" onclick="s18ApplyBulk()">Terapkan</button>'
       + '<button type="button" class="pager-btn" onclick="s18ResetAll()" title="Hapus semua pengaturan manual">Kembalikan semua ke otomatis</button></div>';
     panel.innerHTML = note + bar1 + bar2 + '<div id="s18tbl">' + s18TableHtml() + '</div>';
+    s18LoadAll().then(s18Refresh);
   }
   function s18Refresh(){
     const t = document.getElementById('s18tbl'); if (t) t.innerHTML = s18TableHtml();
