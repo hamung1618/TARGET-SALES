@@ -1877,12 +1877,18 @@ self.onmessage = function(e){
       return { name:'Profit Produk', title:'Profit Penjualan per Produk', info: exportInfoLine() + '  |  Urutan: ' + ({desc:'Profit terbesar ke terkecil', asc:'Profit terkecil ke terbesar'}[s3Sort] || 'Nama produk (A–Z)') + (full ? '' : '  |  Kategori : ' + s3CatLabel() + '  |  Pilihan produk : ' + (s3Sel.size ? s3Sel.size + ' produk' : 'Semua')), head:['NO','PRODUK','QTY','TOTAL PENJUALAN','TOTAL HPP','HARGA JUAL','HARGA BELI','PROFIT'], types:['c','t','n','rp','rp','tr','tr','rp'], rows:l3.map((x,i)=>[i+1,...x]), total:['TOTAL','',T3.qty,T3.sales,T3.hpp,'','',T3.profit] };
     }
     if (tab === 's6'){
-      const rows = buildFakturRows().map((row,i) => {
+      const rows = buildFakturRows(!!(opts && opts.full)).map((row,i) => {
         const x = row.x, hj = N(x['Harga Jual']), disc = N(x.Discount);
         return [i+1, x.Tanggal, row.faktur, x.Sales||row.sales||'', x.Produk||'', N(x.Jumlah), x.Satuan||'', N(x['Harga Beli']), hj, disc || '', disc ? (hj - disc) : '', N(x.Total), row.isFirst ? row.nominal : '', row.isFirst ? row.profit : '', x.Pembayaran||row.bayar||'', x.Customer||row.customer||''];
       });
       /* Angka tanpa awalan Rp; Disc & HARGA JUAL (DISC) dikosongkan bila disc = 0 */
-      return { name:'Faktur', title:'Rekap per Faktur', head:['NO','TANGGAL','NO. FAKTUR','SALES','PRODUK','QTY','SATUAN','HARGA BELI','HARGA JUAL','DISC','HARGA JUAL (DISC)','TOTAL','NOMINAL FAKTUR','PROFIT PER FAKTUR','PEMBAYARAN','CUSTOMER'], types:['c','d','t','t','t','n','c','n','n','n','n','n','n','n','t','t'], rows, total:['TOTAL','','','','',r.qty,'','','','','',r.sales,r.sales,r.profit,'',''] };
+      const subOn = !!(s6Sub && !(opts && opts.full));
+      let tQty = r.qty, tSales = r.sales, tProfit = r.profit;
+      if (subOn){
+        tQty = 0; tSales = 0; tProfit = 0;
+        buildFakturRows(false).forEach(rw => { if (!rw.isBatal && !rw.lineBatal) tQty += N(rw.x.Jumlah); if (rw.isFirst){ tSales += rw.nominal; tProfit += rw.profit; } });
+      }
+      return { name:'Faktur', title: subOn ? ('Rekap per Faktur — ' + rupaSubLabel(s6Sub)) : 'Rekap per Faktur', head:['NO','TANGGAL','NO. FAKTUR','SALES','PRODUK','QTY','SATUAN','HARGA BELI','HARGA JUAL','DISC','HARGA JUAL (DISC)','TOTAL','NOMINAL FAKTUR','PROFIT PER FAKTUR','PEMBAYARAN','CUSTOMER'], types:['c','d','t','t','t','n','c','n','n','n','n','n','n','n','t','t'], rows, total:['TOTAL','','','','',tQty,'','','','','',tSales,tSales,tProfit,'',''] };
     }
     if (tab === 's9'){
       return { name:'Data Harga', title:'Data Harga Beli & Jual', head:['PRODUK','SATUAN','HARGA BELI TERENDAH','HARGA BELI TERTINGGI','HARGA JUAL TERENDAH','HARGA JUAL TERTINGGI','KET'], types:['t','c','rp','rp','rp','rp','t'], rows:(r.s9||[]).map(x=>[x[0],x[1]||'',x[2],x[3],x[4],x[5], x[6] ? ((x[6].dir==='naik'?'Naik':'Turun')+' sejak '+fmtTgl(new Date(x[6].ts))) : '']), total:null };
@@ -2576,7 +2582,7 @@ self.onmessage = function(e){
       return s1BarHtml() + '<div id="s1tbl">' + s1TableHtml() + '</div>';
     } else if (t === 's3'){
       return s3SortBarHtml() + '<div id="s3tbl">' + s3TableHtml() + '</div>';
-    } else if (t === 's6'){ return renderRekapPerFaktur();
+    } else if (t === 's6'){ return s6BarHtml() + renderRekapPerFaktur();
     } else if (t === 's9'){ return renderS9();
     } else if (t === 's10'){ return renderDataBulanan();
     } else if (t === 's14'){ return renderS14();
@@ -3952,16 +3958,17 @@ self.onmessage = function(e){
       const ab = document.getElementById('autoBatalOverlay'); if (ab && ab.classList.contains('show')) closeAutoBatalModal();
     }
   });
-  function buildFakturRows(){
-    const list = buildFakturGroups();
+  function buildFakturRows(noSub){
+    const list = buildFakturGroups(noSub);
     const rows = [];
     list.forEach(g => { g.items.forEach((x, idx) => { rows.push({ x, isFirst: idx === 0, span: g.items.length, nominal: g.nominal, profit: g.profit, faktur: g.faktur, sales: g.sales, bayar: g.bayar, customer: g.customer, isBatal: g.isBatal, hasMinus: g.hasMinus, hasLineBatal: g.hasLineBatal, lineBatal: !g.isBatal && batalLineSet.has(lineKeyOf(x)) }); }); });
     return rows;
   }
-  function buildFakturGroups(){
+  function buildFakturGroups(noSub){
     const groups = new Map(), src = getFakturSourceRows();
     for (let i = 0; i < src.length; i++){
       const x = src[i]; if (!x) continue;
+      if (s6Sub && !noSub && rupaSubCat(x.Produk ?? x.produk ?? '') !== s6Sub) continue;   /* filter Sub Kategori tab Faktur */
       const nf = String(x['No. Faktur'] ?? x.faktur ?? '').trim() || '(Tanpa Faktur)';
       const total = N(x.Total), pr = total - N(x.Jumlah) * N(x['Harga Beli']);
       let g = groups.get(nf);
@@ -3977,6 +3984,20 @@ self.onmessage = function(e){
       if (!g.customer && x.Customer) g.customer = x.Customer;
     }
     return [...groups.values()].sort((a,b) => { if (a.ts !== b.ts) return (b.ts||0) - (a.ts||0); return String(a.faktur).localeCompare(String(b.faktur)); });
+  }
+  /* ===== Tab Faktur: filter Sub Kategori (Rupa Rupa) ===== */
+  let s6Sub = '';
+  function s6BarHtml(){
+    const opts = RUPA_SUB_OPTS.map(o => '<option value="' + o.v + '"' + (s6Sub === o.v ? ' selected' : '') + '>' + o.l + '</option>').join('');
+    const note = s6Sub ? '<span style="color:var(--muted)">Menampilkan hanya item sub kategori <b>' + escHtml(rupaSubLabel(s6Sub)) + '</b>; nominal &amp; profit faktur dihitung dari item tersebut.</span>' : '';
+    return '<div class="s3sortbar" style="justify-content:flex-start;flex-wrap:wrap"><label>Sub Kategori : <select onchange="s6SetSub(this.value)">' + opts + '</select></label>' + note + '</div>';
+  }
+  function s6SetSub(v){
+    s6Sub = v || '';
+    rekapPage.s6 = 0; viewCache['s6'] = null;
+    const panel = document.getElementById('panel_s6');
+    if (panel) panel.innerHTML = renderTab('s6');
+    else show('s6', document.querySelector('.tabs button.active'));
   }
   function renderRekapPerFaktur(){
     const allRows = buildFakturRows();
@@ -4026,7 +4047,12 @@ self.onmessage = function(e){
       body += '<tr>' + cells + '</tr>';
     });
     /* Baris TOTAL: tetap pakai awalan Rp */
-    const foot = '<tr><td class="num">TOTAL</td><td></td><td></td><td></td><td></td><td class="num">' + (R.qty || 0) + '</td><td></td><td></td><td></td><td></td><td></td><td class="num">' + rp(R.sales) + '</td><td class="num">' + rp(R.sales) + '</td><td class="num">' + rp(R.profit) + '</td><td></td><td></td></tr>';
+    let fQty = R.qty || 0, fSales = R.sales, fProfit = R.profit;
+    if (s6Sub){   /* total mengikuti baris yang tampil (sub kategori terpilih, tanpa faktur/item batal) */
+      fQty = 0; fSales = 0; fProfit = 0;
+      allRows.forEach(rw => { if (!rw.isBatal && !rw.lineBatal) fQty += N(rw.x.Jumlah); if (rw.isFirst){ fSales += rw.nominal; fProfit += rw.profit; } });
+    }
+    const foot = '<tr><td class="num">TOTAL</td><td></td><td></td><td></td><td></td><td class="num">' + fQty + '</td><td></td><td></td><td></td><td></td><td></td><td class="num">' + rp(fSales) + '</td><td class="num">' + rp(fSales) + '</td><td class="num">' + rp(fProfit) + '</td><td></td><td></td></tr>';
     if (!totalLines) return '<div class="tablebox"><table><thead><tr>' + head.map(h => '<th>'+h+'</th>').join('') + '</tr></thead><tbody><tr><td colspan="16" style="text-align:center;padding:28px;color:#64748b">Belum ada data.</td></tr></tbody></table></div>';
     return rekapPagerHtml('s6', totalLines) + '<div class="tablebox"><table><thead><tr>' + head.map(h => '<th>'+h+'</th>').join('') + '</tr></thead><tbody>' + body + '</tbody><tfoot>' + foot + '</tfoot></table></div>';
   }
