@@ -1891,7 +1891,8 @@ self.onmessage = function(e){
       return { name:'Faktur', title: subOn ? ('Rekap per Faktur — ' + rupaSubLabel(s6Sub)) : 'Rekap per Faktur', head:['NO','TANGGAL','NO. FAKTUR','SALES','PRODUK','QTY','SATUAN','HARGA BELI','HARGA JUAL','DISC','HARGA JUAL (DISC)','TOTAL','NOMINAL FAKTUR','PROFIT PER FAKTUR','PEMBAYARAN','CUSTOMER'], types:['c','d','t','t','t','n','c','n','n','n','n','n','n','n','t','t'], rows, total:['TOTAL','','','','',tQty,'','','','','',tSales,tSales,tProfit,'',''] };
     }
     if (tab === 's9'){
-      return { name:'Data Harga', title:'Data Harga Beli & Jual', head:['PRODUK','SATUAN','HARGA BELI TERENDAH','HARGA BELI TERTINGGI','HARGA JUAL TERENDAH','HARGA JUAL TERTINGGI','KET'], types:['t','c','rp','rp','rp','rp','t'], rows:(r.s9||[]).map(x=>[x[0],x[1]||'',x[2],x[3],x[4],x[5], x[6] ? ((x[6].dir==='naik'?'Naik':'Turun')+' sejak '+fmtTgl(new Date(x[6].ts))) : '']), total:null };
+      const l9 = s9List(!!(opts && opts.full)), sub9 = !!(s9Sub && !(opts && opts.full));
+      return { name:'Data Harga', title: sub9 ? ('Data Harga Beli & Jual — ' + rupaSubLabel(s9Sub)) : 'Data Harga Beli & Jual', head:['PRODUK','SATUAN','HARGA BELI TERENDAH','HARGA BELI TERTINGGI','HARGA JUAL TERENDAH','HARGA JUAL TERTINGGI','KET'], types:['t','c','rp','rp','rp','rp','t'], rows:l9.map(x=>[x[0],x[1]||'',x[2],x[3],x[4],x[5], x[6] ? ((x[6].dir==='naik'?'Naik':'Turun')+' sejak '+fmtTgl(new Date(x[6].ts))) : '']), total:null };
     }
     if (tab === 's14'){
       const rows = s14Rows(), T = s14Total(rows);
@@ -2583,14 +2584,28 @@ self.onmessage = function(e){
     } else if (t === 's3'){
       return s3SortBarHtml() + '<div id="s3tbl">' + s3TableHtml() + '</div>';
     } else if (t === 's6'){ return s6BarHtml() + renderRekapPerFaktur();
-    } else if (t === 's9'){ return renderS9();
+    } else if (t === 's9'){ return s9BarHtml() + renderS9();
     } else if (t === 's10'){ return renderDataBulanan();
     } else if (t === 's14'){ return renderS14();
     } else if (t === 's15'){ return renderS15(); }
   }
   function monthFilterLabel(){ const fm = document.getElementById('filterMonth'); return fm && fm.value ? (fm.options[fm.selectedIndex]?.text || fm.value) : 'Semua bulan'; }
+  /* ===== Tab Data Harga: filter Sub Kategori (Rupa Rupa) ===== */
+  let s9Sub = '';
+  function s9List(noSub){ const l = R.s9 || []; return (s9Sub && !noSub) ? l.filter(x => rupaSubCat(x[0]) === s9Sub) : l; }
+  function s9BarHtml(){
+    const opts = RUPA_SUB_OPTS.map(o => '<option value="' + o.v + '"' + (s9Sub === o.v ? ' selected' : '') + '>' + o.l + '</option>').join('');
+    return '<div class="s3sortbar" style="justify-content:flex-start;flex-wrap:wrap"><label>Sub Kategori : <select onchange="s9SetSub(this.value)">' + opts + '</select></label></div>';
+  }
+  function s9SetSub(v){
+    s9Sub = v || '';
+    rekapPage.s9 = 0; viewCache['s9'] = null;
+    const panel = document.getElementById('panel_s9');
+    if (panel) panel.innerHTML = renderTab('s9');
+    else show('s9', document.querySelector('.tabs button.active'));
+  }
   function renderS9(){
-    const list = R.s9 || [], pageRows = sliceRekap('s9', list);
+    const list = s9List(), pageRows = sliceRekap('s9', list);
     const caption = '<div style="font-weight:700;color:#1f4e78;margin-bottom:8px">' + monthFilterLabel() + ' ( filter bulan )</div>';
     let body = '';
     if (!pageRows.length) body = '<tr><td colspan="7" style="text-align:center;padding:28px;color:#64748b">Tidak ada data untuk filter saat ini.</td></tr>';
