@@ -393,6 +393,8 @@ body.dark .pager-btn:hover:not(:disabled){background:#475569;color:#fff}
 .s18chip b{opacity:.6;font-weight:700;margin-left:3px}
 .s18chip:hover{background:var(--hover-bg)}
 .s18chip.on{background:#1f4e78;border-color:#1f4e78;color:#fff}
+.s18chip.s18add{border-style:dashed;border-color:#1f4e78;color:#1f4e78;font-weight:700}
+body.dark .s18chip.s18add{border-color:#60a5fa;color:#93c5fd}
 .s18chip.s18reset{border-style:dashed;color:var(--muted)}
 .s18bulkbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 8px;padding:8px 12px;border-radius:8px;background:#fff7e0;border:1px solid #f0c860;color:#6b4a00;font-size:12px}
 body.dark .s18bulkbar{background:#3a2f12;border-color:#7a5f1a;color:#fde68a}
@@ -1534,6 +1536,30 @@ self.onmessage = function(e){
   ];
   /* Pengaturan manual sub kategori per produk (kunci = nama produk HURUF BESAR). Kosong = otomatis berdasarkan kata kunci. */
   let subOverride = {};
+  /* Sub kategori tambahan buatan pengguna: [{v:'MINUMAN', l:'Minuman'}] — disisipkan sebelum "Lainnya" */
+  let subCustom = [];
+  function applySubCustom(){
+    for (let i = RUPA_SUB_OPTS.length - 1; i >= 0; i--) if (RUPA_SUB_OPTS[i].c) RUPA_SUB_OPTS.splice(i, 1);
+    let at = RUPA_SUB_OPTS.findIndex(o => o.v === 'LAIN'); if (at < 0) at = RUPA_SUB_OPTS.length;
+    RUPA_SUB_OPTS.splice(at, 0, ...subCustom.map(o => ({ v: o.v, l: o.l, c: true })));
+  }
+  async function saveSubCustom(){
+    try {
+      if (useIDB && db) await db.meta.put({ key: 'subCustom', value: subCustom.map(o => ({ v: o.v, l: o.l })) });
+      else localStorage.setItem('rekap-sub-custom', JSON.stringify(subCustom));
+    } catch(e){ console.warn('saveSubCustom', e); }
+    try { schedulePush(); } catch(e){}
+  }
+  async function loadSubCustom(){
+    subCustom = [];
+    try {
+      let v = null;
+      if (useIDB && db){ const m = await db.meta.get('subCustom'); v = m && m.value; }
+      else { const raw = localStorage.getItem('rekap-sub-custom'); if (raw) v = JSON.parse(raw); }
+      if (Array.isArray(v)) v.forEach(o => { if (o && o.v && o.l && !subCustom.some(x => x.v === o.v) && !RUPA_SUB_OPTS.some(x => x.v === o.v && !x.c)) subCustom.push({ v: String(o.v), l: String(o.l) }); });
+    } catch(e){ console.warn('loadSubCustom', e); }
+    applySubCustom();
+  }
   function rupaSubCat(p){
     if (isFitriProduct(p)) return '';
     const o = subOverride[U(p)];
@@ -1541,6 +1567,7 @@ self.onmessage = function(e){
     return rupaSubAuto(p);
   }
   async function loadSubOverride(){
+    await loadSubCustom();
     subOverride = {};
     try {
       let v = null;
@@ -2685,6 +2712,9 @@ self.onmessage = function(e){
     all.forEach(nm => { const c = rupaSubCat(nm); cnt[c] = (cnt[c] || 0) + 1; if (subOverride[U(nm)]) man++; });
     const chip = (v, label, n) => '<button type="button" class="s18chip' + (s18Show === v ? ' on' : '') + '" data-act="show" data-v="' + v + '">' + escHtml(label) + ' <b>' + n + '</b></button>';
     let h = chip('', 'Semua', all.length) + s18Subs().map(o => chip(o.v, o.l, cnt[o.v] || 0)).join('');
+    const cur = RUPA_SUB_OPTS.find(o => o.c && o.v === s18Show);
+    h += '<button type="button" class="s18chip s18add" data-act="add">+ Tambah sub kategori</button>';
+    if (cur) h += '<button type="button" class="s18chip s18reset" data-act="delsub" title="Hapus sub kategori ini">🗑 Hapus “' + escHtml(cur.l) + '”</button>';
     if (man) h += chip('__MANUAL', '✏️ Diatur manual', man) + '<button type="button" class="s18chip s18reset" data-act="reset" title="Hapus semua pengaturan manual">↩ Reset semua</button>';
     return h;
   }
@@ -2711,7 +2741,7 @@ self.onmessage = function(e){
   }
   function renderS18(){
     const panel = document.getElementById('panel_s18'); if (!panel) return;
-    panel.innerHTML = '<div class="s18hint">Klik nama sub kategori di samping produk untuk memindahkannya. <b>Biru penuh</b> = diatur manual · <b>garis putus-putus</b> = otomatis. Klik lagi tombol biru penuh untuk kembali ke otomatis. Tersimpan otomatis. Produk Fitri tidak punya sub kategori.</div>'
+    panel.innerHTML = '<div class="s18hint">Klik nama sub kategori di samping produk untuk memindahkannya. <b>Biru penuh</b> = diatur manual · <b>garis putus-putus</b> = otomatis. Klik lagi tombol biru penuh untuk kembali ke otomatis. Tersimpan otomatis. Tombol <b>+ Tambah sub kategori</b> untuk membuat kelompok baru. Produk Fitri tidak punya sub kategori.</div>'
       + '<div class="s18top"><input type="search" id="s18Search" placeholder="🔍 Cari produk..." value="' + escHtml(s18Q) + '" oninput="s18Search(this.value)"></div>'
       + '<div class="s18chips" id="s18chips"></div><div id="s18bulk"></div><div class="s18list" id="s18list"></div>';
     panel.onclick = s18Click; panel.onchange = s18Change;
@@ -2739,6 +2769,36 @@ self.onmessage = function(e){
     else if (act === 'clearsel'){ s18Sel = new Set(); s18Refresh(); }
     else if (act === 'more'){ s18Limit += 150; s18Refresh(); }
     else if (act === 'reset') s18ResetAll();
+    else if (act === 'add') s18AddSub();
+    else if (act === 'delsub') s18DelSub();
+  }
+  async function s18CommitCustom(){
+    applySubCustom(); viewCache = {}; dataVersion++;
+    await saveSubCustom(); await saveSubOverride();
+  }
+  async function s18AddSub(){
+    const raw = prompt('Nama sub kategori baru (contoh: Minuman):');
+    if (raw == null) return;
+    const l = raw.replace(/[<>&"'`\\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 30);
+    const v = l.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+    if (!l || !v) return alert('Nama tidak valid. Gunakan huruf atau angka.');
+    if (RUPA_SUB_OPTS.some(o => o.v === v || o.l.toLowerCase() === l.toLowerCase())) return alert('Sub kategori "' + l + '" sudah ada.');
+    subCustom.push({ v: v, l: l });
+    s18Refresh();
+    setStatus('Sub kategori "' + l + '" ditambahkan. Klik tombolnya di baris produk (atau centang beberapa produk) untuk memindahkan.');
+    await s18CommitCustom();
+  }
+  async function s18DelSub(){
+    const cur = RUPA_SUB_OPTS.find(o => o.c && o.v === s18Show); if (!cur) return;
+    const used = Object.keys(subOverride).filter(k => subOverride[k] === cur.v);
+    if (!confirm('Hapus sub kategori "' + cur.l + '"?' + (used.length ? '\n' + used.length + ' produk di dalamnya akan kembali ke sub kategori otomatis.' : ''))) return;
+    used.forEach(k => delete subOverride[k]);
+    subCustom = subCustom.filter(o => o.v !== cur.v);
+    s18Show = '';
+    try { if (s1Sub === cur.v) s1Sub = ''; if (s9Sub === cur.v) s9Sub = ''; if (s14Sub === cur.v) s14Sub = ''; if (dmSub === cur.v) dmSub = ''; if (rekapBln.sub === cur.v) rekapBln.sub = ''; if (s6Sub === cur.v) s6Sub = ''; } catch(e){}
+    applySubCustom(); s18Refresh();
+    setStatus('Sub kategori "' + cur.l + '" dihapus.');
+    await s18CommitCustom();
   }
   function s18Change(e){
     const cb = e.target; if (!cb || cb.type !== 'checkbox') return;
