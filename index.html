@@ -973,8 +973,19 @@ self.importScripts('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.
 self.onmessage = function(e){
   try {
     const buf = e.data;
-    const wb = XLSX.read(buf, {type:'array', cellDates:true});
-    const sn = wb.Sheets['Sheet1'] || wb.Sheets[wb.SheetNames[0]];
+    self.postMessage({type:'stage', text:'Membaca isi file Excel (file besar bisa beberapa saat)...'});
+    let wb, sn;
+    try {
+      const names = XLSX.read(buf, {type:'array', bookSheets:true}).SheetNames || [];
+      const pick = names.indexOf('Sheet1') >= 0 ? 'Sheet1' : names[0];
+      wb = XLSX.read(buf, {type:'array', cellDates:true, dense:true, sheets:pick});
+      sn = wb.Sheets[pick];
+      if (!sn) throw new Error('sheet kosong');
+    } catch(_) {
+      wb = XLSX.read(buf, {type:'array', cellDates:true});
+      sn = wb.Sheets['Sheet1'] || wb.Sheets[wb.SheetNames[0]];
+    }
+    self.postMessage({type:'stage', text:'Mengolah baris data...'});
     const raw = XLSX.utils.sheet_to_json(sn, {defval:''});
     const col = (r, ...keys) => { for (const k of keys) { if (r[k] !== undefined && r[k] !== '') return r[k]; } return ''; };
     const num = (v) => parseFloat(String(v == null ? '' : v).replace(/[^0-9.-]/g, '')) || 0;
@@ -1190,8 +1201,13 @@ self.onmessage = function(e){
   }
   async function fallbackSyncParse(buf){
     try {
-      const wb = XLSX.read(buf, {type:'array', cellDates:true});
-      const sn = wb.Sheets['Sheet1'] || wb.Sheets[wb.SheetNames[0]];
+      let wb, sn;
+      try {
+        const names = XLSX.read(buf, {type:'array', bookSheets:true}).SheetNames || [];
+        const pick = names.indexOf('Sheet1') >= 0 ? 'Sheet1' : names[0];
+        wb = XLSX.read(buf, {type:'array', cellDates:true, dense:true, sheets:pick}); sn = wb.Sheets[pick];
+        if (!sn) throw new Error('sheet kosong');
+      } catch(_) { wb = XLSX.read(buf, {type:'array', cellDates:true}); sn = wb.Sheets['Sheet1'] || wb.Sheets[wb.SheetNames[0]]; }
       const raw = XLSX.utils.sheet_to_json(sn, {defval:''});
       const col = (r, ...keys) => { for (const k of keys) { if (r[k] !== undefined && r[k] !== '') return r[k]; } return ''; };
       const num = (v) => parseFloat(String(v == null ? '' : v).replace(/[^0-9.-]/g, '')) || 0;
@@ -1249,8 +1265,9 @@ self.onmessage = function(e){
   let _inFlightWorker = false, _pendingChunks = [];
   async function onWorkerMsg(e){
     const m = e.data;
-    if (m.type === 'start'){ _pendingChunks = []; setStatus('Memparsing Excel di worker... (0 / ' + m.total.toLocaleString('id-ID') + ' baris)'); }
-    else if (m.type === 'chunk'){ const _ch = m.chunk || []; for (let i = 0; i < _ch.length; i++) _pendingChunks.push(_ch[i]); setStatus('Memparsing Excel... (' + _pendingChunks.length.toLocaleString('id-ID') + ' baris)'); }
+    if (m.type === 'stage'){ showBusy(m.text); setStatus(m.text); }
+    else if (m.type === 'start'){ _pendingChunks = []; showBusy('Memproses ' + m.total.toLocaleString('id-ID') + ' baris...'); setStatus('Memparsing Excel di worker... (0 / ' + m.total.toLocaleString('id-ID') + ' baris)'); }
+    else if (m.type === 'chunk'){ const _ch = m.chunk || []; for (let i = 0; i < _ch.length; i++) _pendingChunks.push(_ch[i]); setStatus('Memparsing Excel... (' + _pendingChunks.length.toLocaleString('id-ID') + ' baris)'); showBusy('Memproses data... ' + _pendingChunks.length.toLocaleString('id-ID') + ' baris'); }
     else if (m.type === 'error'){ _pendingChunks = []; _inFlightWorker = false; _pendingBuffer = null; setStatus('Gagal membaca Excel: ' + m.message); hideBusy(); }
     else if (m.type === 'done'){
       _pendingBuffer = null;
@@ -1259,7 +1276,9 @@ self.onmessage = function(e){
       try {
         const lanjut = await resolveHargaBeliConflicts(incoming, monthList);
         if (!lanjut){ setStatus('Import dibatalkan.'); hideBusy(); return; }
+        showBusy('Menyimpan ' + incoming.length.toLocaleString('id-ID') + ' baris ke penyimpanan lokal...');
         const replacedDays = await commitIncomingTx(incoming, monthList);
+        showBusy('Menyiapkan tampilan...');
         await mergeMetaFromIncoming({ products: m.products || [], sales: m.sales || [], months: monthList });
         await postParseDone(replacedDays, incoming.length);
       } catch(err){ console.error(err); setStatus('Gagal menyimpan data: ' + (err.message || err)); hideBusy(); }
@@ -1279,8 +1298,8 @@ self.onmessage = function(e){
     const extra = blLabel ? ' — digabung (tanggal diperbarui: ' + blLabel + '; baris baru: ' + (newCount||0).toLocaleString('id-ID') + ')' : '';
     setStatus('Berhasil diproses: ' + _parseFileName + ' (total tersimpan ' + totalRows.toLocaleString('id-ID') + ' baris)' + extra + (useIDB ? ' — IndexedDB' : ' — in-memori'));
     closeDd();
-    if (sbClient) { setCloudStatus('Menyinkronkan…'); try { await pushToCloud(); } catch(e){ console.warn('Auto-sync ke cloud gagal setelah import', e); setCloudStatus('Gagal sync otomatis — klik "Upload Cloud" manual supaya data tidak hilang.'); } }
-    hideBusy();
+    hideBusy();   /* data sudah tersimpan lokal & tampil — jangan tahan layar menunggu cloud */
+    if (sbClient) { setCloudStatus('Menyinkronkan…'); pushToCloud().catch(e => { console.warn('Auto-sync ke cloud gagal setelah import', e); setCloudStatus('Gagal sync otomatis — klik "Upload Cloud" manual supaya data tidak hilang.'); }); }
     try { await runAutoBatalDetection({ silent: true }); } catch(e){ console.warn('autoBatalDetect gagal', e); }
   }
   function materialiseOne(r){
