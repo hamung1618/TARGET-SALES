@@ -519,6 +519,7 @@ body.dark .s16table tr.bad td.sel{color:#fca5a5}
               <button onclick="show('s1',this)">Rekap Penjualan All Sales</button>
               <button onclick="show('s14',this)">Rekap Penjualan per Sales</button>
               <button onclick="show('s9',this)">Data Harga</button>
+              <button onclick="show('s18',this)">🗂️ Atur Sub Kategori</button>
               <button onclick="show('s10',this)">Data Bulanan</button>
               <button onclick="show('s12',this)">Rekap Penjualan &amp; Profit Bulanan</button>
               <button onclick="show('s13',this)">📊 Grafik</button>
@@ -593,6 +594,7 @@ body.dark .s16table tr.bad td.sel{color:#fca5a5}
         <div id="panel_s15" class="view"></div>
         <div id="panel_s16" class="view" style="display:none"></div>
         <div id="panel_s17" class="view" style="display:none"></div>
+        <div id="panel_s18" class="view" style="display:none"></div>
       </div>
     </div>
   </div>
@@ -1485,8 +1487,31 @@ self.onmessage = function(e){
     { v: 'NS', l: 'NS' },
     { v: 'LAIN', l: 'Lainnya' }
   ];
+  /* Pengaturan manual sub kategori per produk (kunci = nama produk HURUF BESAR). Kosong = otomatis berdasarkan kata kunci. */
+  let subOverride = {};
   function rupaSubCat(p){
     if (isFitriProduct(p)) return '';
+    const o = subOverride[U(p)];
+    if (o && RUPA_SUB_OPTS.some(x => x.v === o)) return o;
+    return rupaSubAuto(p);
+  }
+  async function loadSubOverride(){
+    subOverride = {};
+    try {
+      let v = null;
+      if (useIDB && db){ const m = await db.meta.get('subOverride'); v = m && m.value; }
+      else { const raw = localStorage.getItem('rekap-sub-override'); if (raw) v = JSON.parse(raw); }
+      if (v && typeof v === 'object') Object.keys(v).forEach(k => { if (k && v[k]) subOverride[k] = String(v[k]); });
+    } catch(e){ console.warn('loadSubOverride', e); }
+  }
+  async function saveSubOverride(){
+    try {
+      if (useIDB && db) await db.meta.put({ key: 'subOverride', value: Object.assign({}, subOverride) });
+      else localStorage.setItem('rekap-sub-override', JSON.stringify(subOverride));
+    } catch(e){ console.warn('saveSubOverride', e); }
+    try { schedulePush(); } catch(e){}
+  }
+  function rupaSubAuto(p){
     const u = U(p);
     if (u.includes('BIHUN') || u.includes('MIE IKAT') || u.includes('SOUN') || u.includes('BAKSO GAJAH')) return 'UPS';
     if (u.includes('AGAR') || u.includes('JELLYGAR') || u.includes('JELLY') || u.includes('PUDDING') || u.includes('COCOMAXI')) return 'AGAR';
@@ -1894,6 +1919,10 @@ self.onmessage = function(e){
       const l9 = s9List(!!(opts && opts.full)), sub9 = !!(s9Sub && !(opts && opts.full));
       return { name:'Data Harga', title: sub9 ? ('Data Harga Beli & Jual — ' + rupaSubLabel(s9Sub)) : 'Data Harga Beli & Jual', head:['PRODUK','SATUAN','HARGA BELI TERENDAH','HARGA BELI TERTINGGI','HARGA JUAL TERENDAH','HARGA JUAL TERTINGGI','KET'], types:['t','c','rp','rp','rp','rp','t'], rows:l9.map(x=>[x[0],x[1]||'',x[2],x[3],x[4],x[5], x[6] ? ((x[6].dir==='naik'?'Naik':'Turun')+' sejak '+fmtTgl(new Date(x[6].ts))) : '']), total:null };
     }
+    if (tab === 's18'){
+      const names = s18Products();
+      return { name:'Sub Kategori Produk', title:'Sub Kategori Produk', head:['PRODUK','SUB KATEGORI OTOMATIS','SUB KATEGORI SAAT INI','STATUS'], types:['t','t','t','t'], rows:names.map(nm => [nm, rupaSubLabel(rupaSubAuto(nm)), rupaSubLabel(rupaSubCat(nm)), subOverride[U(nm)] ? 'Manual' : 'Otomatis']), total:null };
+    }
     if (tab === 's14'){
       const rows = s14Rows(), T = s14Total(rows);
       const xl = rows.map(r => [r[0], r[1] === '' ? '' : N(r[1]), r[2], s14PriceXl(r[3]), s14PriceXl(r[4]), r[5], r[6], r[7], r[8]]);
@@ -1944,9 +1973,9 @@ self.onmessage = function(e){
       const own = OWN_PRODUCT_TABS.indexOf(t) >= 0;
       document.body.classList.toggle('hide-global-product', own);
       document.body.classList.toggle('hide-own-bar', OWN_BAR_TABS.indexOf(t) >= 0);
-      document.body.classList.toggle('is-analisa', t === 's16' || t === 's17');
+      document.body.classList.toggle('is-analisa', t === 's16' || t === 's17' || t === 's18');
       document.body.classList.toggle('is-target', t === 's15' && (s15Sub === 'target' || s15Sub === 'bonus'));
-      document.body.classList.toggle('no-kpi', ['s10','s12','s13','s16','s17'].indexOf(t) >= 0);
+      document.body.classList.toggle('no-kpi', ['s10','s12','s13','s16','s17','s18'].indexOf(t) >= 0);
       if (own && filters && filters.productName) {      /* filter nama produk hanya untuk tab biasa: simpan, kosongkan, dipulihkan saat kembali */
         _stashedProductName = filters.productName;
         const fn = document.getElementById('filterProductName'); if (fn) fn.value = '';
@@ -1983,6 +2012,7 @@ self.onmessage = function(e){
     if (panel) panel.style.display = 'block';
     if (t === 's16'){ renderAnalisa(); }
     else if (t === 's17'){ renderS17(); }
+    else if (t === 's18'){ renderS18(); }
     else if (t === 's12'){ renderRekapBulanan(); }
     else if (t === 's13'){ renderGrafikBulanan(); }
     else if (!viewCache[t] || viewCache[t].ver !== dataVersion){
@@ -2578,6 +2608,97 @@ self.onmessage = function(e){
     const panel = document.getElementById('panel_s1'); if (panel) panel.innerHTML = renderTab('s1');
   }
   document.addEventListener('click', function(e){ const d = document.getElementById('s1Dd'); if (d && d.style.display === 'block' && !e.target.closest('#s1Pick')) d.style.display = 'none'; });
+  /* ===== Tab Atur Sub Kategori Produk (pengaturan manual per produk Rupa Rupa) ===== */
+  let s18Q = '', s18Show = '', s18Names = [], s18Sel = new Set();
+  function s18Products(){
+    const set = new Set((allProductsMeta || []).filter(p => p && !isFitriProduct(p)));
+    (R && R.s1 || []).forEach(x => { if (x && x[0] && !isFitriProduct(x[0])) set.add(x[0]); });
+    return [...set].sort((a, b) => String(a).localeCompare(String(b), 'id'));
+  }
+  function s18Opts(sel, autoLabel){
+    return '<option value=""' + (!sel ? ' selected' : '') + '>Otomatis' + (autoLabel ? ' (' + escHtml(autoLabel) + ')' : '') + '</option>'
+      + RUPA_SUB_OPTS.filter(o => o.v).map(o => '<option value="' + o.v + '"' + (sel === o.v ? ' selected' : '') + '>' + escHtml(o.l) + '</option>').join('');
+  }
+  function s18Visible(){
+    const q = s18Q.trim().toLowerCase();
+    return s18Products().filter(nm => {
+      if (q && nm.toLowerCase().indexOf(q) < 0) return false;
+      const man = !!subOverride[U(nm)];
+      if (s18Show === '__MANUAL') return man;
+      if (s18Show === '__AUTO') return !man;
+      if (s18Show) return rupaSubCat(nm) === s18Show;
+      return true;
+    });
+  }
+  function s18CountText(){
+    const all = s18Products(), man = all.filter(nm => subOverride[U(nm)]).length;
+    return all.length.toLocaleString('id-ID') + ' produk Rupa Rupa · ' + man + ' diatur manual · ' + s18Sel.size + ' dicentang';
+  }
+  function s18TableHtml(){
+    s18Names = s18Visible();
+    if (!s18Names.length) return '<div class="tablebox"><div style="text-align:center;padding:28px;color:#64748b;font-size:13px">' + (allProductsMeta && allProductsMeta.length ? 'Tidak ada produk yang cocok.' : 'Belum ada data produk.') + '</div></div>';
+    const allChecked = s18Names.every(nm => s18Sel.has(nm));
+    const body = s18Names.map((nm, i) => {
+      const man = subOverride[U(nm)] || '';
+      const autoL = rupaSubLabel(rupaSubAuto(nm));
+      return '<tr data-i="' + i + '"><td style="width:34px;text-align:center"><input type="checkbox"' + (s18Sel.has(nm) ? ' checked' : '') + ' onchange="s18Toggle(this,' + i + ')"></td>'
+        + '<td title="' + escHtml(nm) + '">' + escHtml(nm) + '</td><td>' + escHtml(autoL) + '</td>'
+        + '<td><select onchange="s18SetOne(' + i + ',this.value)" style="padding:3px 6px;border-radius:5px;border:1px solid var(--input-border);background:var(--card);color:var(--text);font-size:12px">' + s18Opts(man, autoL) + '</select></td>'
+        + '<td class="s18st" style="font-weight:600;color:' + (man ? '#b45309' : 'var(--muted)') + '">' + (man ? 'Manual' : 'Otomatis') + '</td></tr>';
+    }).join('');
+    return '<div class="tablebox"><table style="min-width:640px"><thead><tr><th style="width:34px;text-align:center"><input type="checkbox" title="Centang semua yang tampil"' + (allChecked ? ' checked' : '') + ' onchange="s18ToggleAll(this)"></th><th>PRODUK</th><th>SUB OTOMATIS</th><th>SUB KATEGORI SAAT INI</th><th>STATUS</th></tr></thead><tbody>' + body + '</tbody></table></div>';
+  }
+  function renderS18(){
+    const panel = document.getElementById('panel_s18'); if (!panel) return;
+    const showOpts = [['', 'Semua produk'], ['__MANUAL', 'Diatur manual'], ['__AUTO', 'Masih otomatis']].concat(RUPA_SUB_OPTS.filter(o => o.v).map(o => [o.v, 'Sub: ' + o.l]))
+      .map(o => '<option value="' + o[0] + '"' + (s18Show === o[0] ? ' selected' : '') + '>' + escHtml(o[1]) + '</option>').join('');
+    const note = '<div style="font-size:12px;color:var(--muted);margin:0 4px 8px;line-height:1.5">Produk masuk ke sub kategori <b>otomatis</b> berdasarkan kata di nama produk. Di sini Anda bisa mengubahnya <b>manual</b> per produk (atau banyak sekaligus). Pengaturan tersimpan dan langsung dipakai di semua tab yang punya filter Sub Kategori. Produk Fitri tidak punya sub kategori.</div>';
+    const bar1 = '<div class="s3sortbar" style="justify-content:flex-start;flex-wrap:wrap;gap:8px 14px">'
+      + '<input type="search" id="s18Search" placeholder="🔍 Cari produk..." value="' + escHtml(s18Q) + '" oninput="s18Search(this.value)" style="padding:4px 8px;border:1px solid var(--input-border);border-radius:6px;font-size:12px;background:var(--input-bg);color:var(--input-text);min-width:200px">'
+      + '<label>Tampilkan : <select onchange="s18SetShow(this.value)">' + showOpts + '</select></label>'
+      + '<span id="s18Count">' + s18CountText() + '</span></div>';
+    const bar2 = '<div class="s3sortbar" style="justify-content:flex-start;flex-wrap:wrap;gap:8px 14px">'
+      + '<label>Pindahkan yang dicentang ke : <select id="s18Bulk">' + s18Opts('', '') + '</select></label>'
+      + '<button type="button" class="pager-btn" onclick="s18ApplyBulk()">Terapkan</button>'
+      + '<button type="button" class="pager-btn" onclick="s18ResetAll()" title="Hapus semua pengaturan manual">Kembalikan semua ke otomatis</button></div>';
+    panel.innerHTML = note + bar1 + bar2 + '<div id="s18tbl">' + s18TableHtml() + '</div>';
+  }
+  function s18Refresh(){
+    const t = document.getElementById('s18tbl'); if (t) t.innerHTML = s18TableHtml();
+    const c = document.getElementById('s18Count'); if (c) c.textContent = s18CountText();
+  }
+  async function s18Commit(){
+    viewCache = {}; dataVersion++;          /* tab lain dirender ulang dengan sub kategori terbaru */
+    await saveSubOverride();
+  }
+  function s18Search(v){ s18Q = v || ''; s18Refresh(); }
+  function s18SetShow(v){ s18Show = v || ''; s18Refresh(); }
+  function s18Toggle(cb, i){ const nm = s18Names[i]; if (nm == null) return; if (cb.checked) s18Sel.add(nm); else s18Sel.delete(nm); const c = document.getElementById('s18Count'); if (c) c.textContent = s18CountText(); }
+  function s18ToggleAll(cb){ s18Names.forEach(nm => { if (cb.checked) s18Sel.add(nm); else s18Sel.delete(nm); }); s18Refresh(); }
+  async function s18SetOne(i, v){
+    const nm = s18Names[i]; if (nm == null) return;
+    if (v) subOverride[U(nm)] = v; else delete subOverride[U(nm)];
+    await s18Commit();
+    const tr = document.querySelector('#s18tbl tr[data-i="' + i + '"] .s18st');
+    if (tr){ tr.textContent = v ? 'Manual' : 'Otomatis'; tr.style.color = v ? '#b45309' : 'var(--muted)'; }
+    const c = document.getElementById('s18Count'); if (c) c.textContent = s18CountText();
+  }
+  async function s18ApplyBulk(){
+    if (!s18Sel.size) return alert('Centang produk yang ingin dipindahkan dulu.');
+    const v = (document.getElementById('s18Bulk') || {}).value || '';
+    s18Sel.forEach(nm => { if (v) subOverride[U(nm)] = v; else delete subOverride[U(nm)]; });
+    const n = s18Sel.size; s18Sel = new Set();
+    await s18Commit(); s18Refresh();
+    setStatus(n + ' produk ' + (v ? 'dipindahkan ke sub kategori ' + rupaSubLabel(v) : 'dikembalikan ke otomatis') + '.');
+  }
+  async function s18ResetAll(){
+    const n = Object.keys(subOverride).length;
+    if (!n) return alert('Belum ada pengaturan manual.');
+    if (!confirm('Kembalikan ' + n + ' produk yang diatur manual ke sub kategori otomatis?')) return;
+    subOverride = {}; s18Sel = new Set();
+    await s18Commit(); s18Refresh();
+    setStatus('Semua pengaturan manual sub kategori dikembalikan ke otomatis.');
+  }
   function renderTab(t){
     if (t === 's1'){
       return s1BarHtml() + '<div id="s1tbl">' + s1TableHtml() + '</div>';
@@ -4204,6 +4325,7 @@ self.onmessage = function(e){
       const total = await db.tx.count();
       if (!total) return;
       await loadBatalFaktur();
+      await loadSubOverride();
       const metaFilters = await db.meta.get('filters');
       if (!_filtersRestored){   /* hanya saat pertama dibuka; sinkronisasi berikutnya tidak menimpa filter yang sedang dipakai */
         if (metaFilters && metaFilters.value) filters = Object.assign({month:null,sales:'',product:'',payment:'',dateFrom:'',dateTo:'',kdCustomer:'',q:'',productName:''}, metaFilters.value);
