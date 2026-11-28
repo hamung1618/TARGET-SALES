@@ -2657,9 +2657,9 @@ self.onmessage = function(e){
   function s1BarHtml(){
     const o = (v,l) => '<option value="' + v + '"' + (s1Sort === v ? ' selected' : '') + '>' + l + '</option>';
     const cat = [['', 'Semua'], ['FITRI', 'Fitri'], ['RUPA_RUPA', 'Rupa Rupa']].map(x => '<option value="' + x[0] + '"' + (s1Cat === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('');
-    const showSub = s1Cat === 'RUPA_RUPA' || !!s1Sub;
+    
     const sub = RUPA_SUB_OPTS.map(x => '<option value="' + x.v + '"' + (s1Sub === x.v ? ' selected' : '') + '>' + x.l + '</option>').join('');
-    const subHtml = showSub ? '<label>Sub Kategori : <select onchange="s1SetSub(this.value)">' + sub + '</select></label>' : '';
+    const subHtml = '<label>Sub Kategori : <select onchange="s1SetSub(this.value)">' + sub + '</select></label>';   /* selalu tampil */
     s1PickNames = s1CatList().map(x => x[0]);
     const items = s1PickNames.map((nm, i) => '<label class="s1-item" data-n="' + escHtml(nm.toLowerCase()) + '" style="display:flex;align-items:center;gap:6px;padding:3px 4px;font-size:12px;cursor:pointer;border-radius:4px"><input type="checkbox" data-i="' + i + '"' + (s1Sel.has(nm) ? ' checked' : '') + ' onchange="s1Toggle(this)"><span>' + escHtml(nm) + '</span></label>').join('') || '<div style="padding:8px;color:var(--muted);font-size:12px">Tidak ada produk.</div>';
     const picker = '<span id="s1Pick" style="position:relative;display:inline-flex;align-items:center;gap:6px">Produk : <button type="button" class="pager-btn" onclick="s1TogglePicker(event)"><span id="s1Count">' + s1CountText() + '</span> ▼</button>'
@@ -3645,7 +3645,7 @@ self.onmessage = function(e){
       + '<label>Bulan : <select onchange="onMonthTabChange(this.value)">' + optHtml(opts('filterMonth'), filters.month || '') + '</select></label>'
       + '<label>Sales : <select onchange="onSalesTabChange(this.value)">' + optHtml(opts('filterSales'), filters.sales || '') + '</select></label>'
       + '<label>Kategori : <select onchange="s14SetCat(this.value)">' + fixed([['', 'Semua'], ['FITRI', 'Fitri'], ['RUPA_RUPA', 'Rupa Rupa']], s14Cat) + '</select></label>'
-      + ((s14Cat === 'RUPA_RUPA' || s14Sub) ? '<label>Sub Kategori : <select onchange="s14SetSub(this.value)">' + RUPA_SUB_OPTS.map(o => '<option value="' + o.v + '"' + (s14Sub === o.v ? ' selected' : '') + '>' + o.l + '</option>').join('') + '</select></label>' : '')
+      + '<label>Sub Kategori : <select onchange="s14SetSub(this.value)">' + RUPA_SUB_OPTS.map(o => '<option value="' + o.v + '"' + (s14Sub === o.v ? ' selected' : '') + '>' + o.l + '</option>').join('') + '</select></label>'
       + picker
       + '<label>Urutkan : <select onchange="s14SetSort(this.value)">' + fixed([['nama', 'Nama produk (A–Z)'], ['desc', 'Profit terbesar'], ['asc', 'Profit terkecil']], s14Sort) + '</select></label>'
       + '<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap"><input type="checkbox" ' + (s14ShowAll ? 'checked ' : '') + 'onchange="s14SetShowAll(this)"> Tampilkan produk tanpa penjualan</label></div>';
