@@ -3055,8 +3055,8 @@ self.onmessage = function(e){
     return css + '<div class="slip">'
       + '<div class="slip-sec"><div class="slip-head">SLIP GAJI &amp; BONUS SALES</div><div class="slip-id"><span>Nama : <b>' + escHtml(tswSales) + '</b></span><span>Periode: ' + escHtml(periode) + '</span></div></div>'
       + '<div class="slip-sec"><h4>A. PENCAPAIAN TARGET</h4><table><thead><tr style="font-size:11px;opacity:.7"><td>Produk</td><td class="n">Target</td><td class="n">Realisasi</td><td class="s" style="font-weight:400">Status</td></tr></thead><tbody>' + tg + '</tbody></table><div style="margin-top:5px">Target tercapai: <b>' + D.n + ' dari ' + D.jml + '</b></div></div>'
-      + '<div class="slip-sec"><h4>B. PENERIMAAN</h4><table><tbody>' + uang(D.gpNama, D.gp) + D.bonus.map(b => uang(b.nama, b.isi ? null : b.v)).join('') + uang('Total bonus', D.manual ? null : D.totBonus, 'sum') + '</tbody></table></div>'
-      + '<div class="slip-sec"><div class="slip-total"><span>TOTAL DITERIMA</span><span>Rp ' + (D.manual ? '<span class="slip-isi" style="width:130px"></span>' : rn(D.total)) + '</span></div></div></div>'
+      + '<div class="slip-sec"><h4>B. PENERIMAAN</h4><table><tbody>' + uang(D.gpNama, D.gp) + D.bonus.map(b => uang(b.nama, b.isi ? null : b.v)).join('') + uang('Total bonus', null, 'sum') + '</tbody></table></div>'
+      + '<div class="slip-sec"><div class="slip-total"><span>TOTAL DITERIMA</span><span>Rp <span class="slip-isi" style="width:130px"></span></span></div></div></div>'
       + '<div style="max-width:520px;margin:10px auto 0;text-align:right"><button type="button" class="bon-nav" style="margin-left:0" onclick="slipExportExcel()">💾 Simpan Excel Slip</button></div>';
   }
   function slipSheet(wb, K, periode){
@@ -3079,10 +3079,12 @@ self.onmessage = function(e){
       r = baris(); cel(r, 2, 'B. PENERIMAAN', { b: 1 });
       /* nilai null = diisi owner: hanya tertulis "Rp", tinggal ketik angkanya */
       const nilai = (rr, cc, v, o) => { o = o || {}; const x = cel(rr, cc, v == null ? 'Rp' : v, { b: o.b, al: v == null ? 'left' : 'right', in: v == null ? 0 : o.in }); x.numFmt = '"Rp "#,##0'; };
-      const uang = (nama, v, o) => { o = o || {}; const rr = baris(tinggi(nama, 44)); wsS.mergeCells(rr, 2, rr, 4); cel(rr, 2, nama, { wrap: 1 }); nilai(rr, 5, v, o); };
+      const uang = (nama, v, o) => { o = o || {}; const rr = baris(tinggi(nama, 34)); wsS.mergeCells(rr, 2, rr, 4); cel(rr, 2, nama, { wrap: 1 }); nilai(rr, 5, v, o); };
       uang(D.gpNama, D.gp, { in: 1 }); D.bonus.forEach(x => uang(x.nama, x.isi ? null : x.v));
-      r = baris(); if (!D.manual){ wsS.mergeCells(r, 2, r, 4); cel(r, 2, 'Total bonus', { b: 1, al: 'right' }); nilai(r, 5, D.totBonus, { b: 1 }); } garis(r);
-      r = baris(40); wsS.mergeCells(r, 2, r, 3); cel(r, 2, 'TOTAL DITERIMA', { b: 1 }); wsS.mergeCells(r, 4, r, 5); nilai(r, 4, D.manual ? null : D.total, { b: 1 }); garis(r);
+      /* Total bonus & Total diterima selalu dikosongkan: diisi manual oleh owner */
+      const isian = (rr, cc, b) => { const x = cel(rr, cc, 'Rp ..............', { b: b, al: 'right' }); x.numFmt = '"Rp "#,##0'; };
+      r = baris(); wsS.mergeCells(r, 2, r, 4); cel(r, 2, 'Total bonus', { b: 1, al: 'right' }); isian(r, 5, 1); garis(r);
+      r = baris(40); wsS.mergeCells(r, 2, r, 3); cel(r, 2, 'TOTAL DITERIMA', { b: 1 }); wsS.mergeCells(r, 4, r, 5); isian(r, 4, 1); garis(r);
       const akhir = r;
       for (let rr = 2; rr <= akhir; rr++){   /* bingkai kiri & kanan */
         const a = wsS.getCell(rr, 2), z = wsS.getCell(rr, 5);
