@@ -1,7 +1,7 @@
 {
   "id": "/BANK_DATA_PENJUALAN/",
-  "name": "Penjualan & Target Sales",
-  "short_name": "PENJUALAN",
+  "name": "PENJ-TARGET SALES",
+  "short_name": "PENJ-TARGET",
   "description": "Rekap data penjualan dengan sinkron cloud antar-device",
   "start_url": "./",
   "scope": "./",
