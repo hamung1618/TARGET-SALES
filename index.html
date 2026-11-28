@@ -143,6 +143,25 @@ body.dark .tsw-title{color:#93c5fd}
 .tsw-item:hover{background:var(--tfoot-bg)}
 .bon-nav{margin-left:8px;padding:4px 12px;border:1px solid var(--input-border);border-radius:6px;font-size:12.5px;font-weight:700;background:var(--tfoot-bg);color:var(--text);cursor:pointer}
 .bon-nav:hover{filter:brightness(.95)}
+.tabs.tabs-collapsible button.sub-item{margin-left:14px;width:calc(100% - 14px);border-left:3px solid #1f4e78}
+.atr-h{font-weight:700;font-size:13px;color:var(--text);margin:22px 0 6px;display:flex;align-items:center;gap:8px}
+.atr-h:first-of-type{margin-top:6px}
+.atr-h .no{background:#1f4e78;color:#fff;border-radius:5px;padding:1px 8px;font-size:12px}
+.atr-sub{font-weight:700;font-size:12.5px;margin:14px 0 4px;color:var(--text)}
+.tsw-t.atr-t{min-width:520px}
+.tsw-t.atr-t td.l{white-space:normal}
+.tsw-t.atr-t tr.top td{background:var(--tfoot-bg);font-weight:700}
+.atr-note{margin:10px 0 0;padding:9px 12px;border-left:3px solid #f59e0b;background:var(--hover-bg2);border-radius:0 6px 6px 0;font-size:12.5px;line-height:1.55;color:var(--text)}
+.atr-note div+div{margin-top:3px}
+.atr-in{width:100%;box-sizing:border-box;padding:3px 6px;border:1px solid var(--input-border);border-radius:5px;font-size:12px;background:var(--input-bg,#fff);color:var(--text)}
+.atr-in.n{text-align:right}
+.atr-in.hd{background:transparent;color:#fff;border-color:#8fb0d0;text-align:center;font-weight:700}
+.atr-in.tt{width:auto;flex:1;min-width:180px;font-weight:700;font-size:13px}
+.atr-ta{width:100%;box-sizing:border-box;margin-top:4px;padding:6px 8px;border:1px solid var(--input-border);border-radius:6px;font:12.5px Arial;background:var(--input-bg,#fff);color:var(--text);resize:vertical}
+.atr-x{padding:3px 8px;border:1px solid #fca5a5;background:#fee2e2;color:#b42318;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer}
+.atr-x:hover{filter:brightness(.95)}
+.tsw-t.atr-t td{white-space:normal}
+.atr-box{margin-top:6px;padding:10px 14px;border:1px solid var(--input-border);border-radius:8px;font-size:13px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
 .tsw-t input.bi{width:92px;padding:2px 6px;border:1px solid var(--input-border);border-radius:5px;font-size:12px;text-align:right;background:var(--input-bg,#fff);color:var(--text)}
 .tsw-t td.sp{border:0;height:10px;padding:0}
 .tsw-empty{padding:18px;text-align:center;color:var(--muted);font-size:12.5px}
@@ -544,6 +563,7 @@ body.dark .s16table tr.bad td.sel{color:#fca5a5}
             <div class="tabs tabs-collapsible" id="tabsMenu">
               <button onclick="show('s6',this)">Faktur</button>
               <button class="active" onclick="s15OpenSub('target',this)">🎯 Target &amp; Bonus Sales</button>
+              <button class="sub-item" onclick="s15OpenSub('aturan',this)">📜 Aturan Umum Gaji &amp; Bonus</button>
               <button onclick="show('s1',this)">Rekap Penjualan All Sales</button>
               <button onclick="show('s14',this)">Rekap Penjualan per Sales</button>
               <button onclick="show('s9',this)">Data Harga</button>
@@ -2017,6 +2037,7 @@ self.onmessage = function(e){
   async function saveExcelTab(tab){
     if (tab === 's15' && s15Sub === 'target'){ closeActionMenu(); return tswExportExcel(); }
     if (tab === 's15' && s15Sub === 'bonus'){ closeActionMenu(); return bonExportExcel(); }
+    if (tab === 's15' && s15Sub === 'aturan'){ closeActionMenu(); return aturanExportExcel(); }
     if (tab === 's13') tab = 's12';
     closeActionMenu();
     if (!R || !R.s1) return alert('Belum ada data untuk disimpan.');
@@ -2046,7 +2067,7 @@ self.onmessage = function(e){
       document.body.classList.toggle('hide-global-product', own);
       document.body.classList.toggle('hide-own-bar', OWN_BAR_TABS.indexOf(t) >= 0);
       document.body.classList.toggle('is-analisa', t === 's16' || t === 's17' || t === 's18');
-      document.body.classList.toggle('is-target', t === 's15' && (s15Sub === 'target' || s15Sub === 'bonus'));
+      document.body.classList.toggle('is-target', t === 's15' && (s15Sub === 'target' || s15Sub === 'bonus' || s15Sub === 'aturan'));
       document.body.classList.toggle('no-kpi', ['s10','s12','s13','s16','s17','s18'].indexOf(t) >= 0);
       if (own && filters && filters.productName) {      /* filter nama produk hanya untuk tab biasa: simpan, kosongkan, dipulihkan saat kembali */
         _stashedProductName = filters.productName;
@@ -2095,9 +2116,9 @@ self.onmessage = function(e){
         const html = renderTab(tab);
         viewCache[tab] = { ver: ver, html: html };
         const p = document.getElementById('panel_' + tab);
-        if (p && p.style.display !== 'none') { p.innerHTML = html; if (tab === 's15' && (s15Sub === 'target' || s15Sub === 'bonus')) tswPaint(); }
+        if (p && p.style.display !== 'none') { p.innerHTML = html; if (tab === 's15' && (s15Sub === 'target' || s15Sub === 'bonus' || s15Sub === 'aturan')) tswPaint(); }
       });
-    } else if (panel && viewCache[t]) { panel.innerHTML = viewCache[t].html; if (t === 's15' && (s15Sub === 'target' || s15Sub === 'bonus')) tswPaint(); }
+    } else if (panel && viewCache[t]) { panel.innerHTML = viewCache[t].html; if (t === 's15' && (s15Sub === 'target' || s15Sub === 'bonus' || s15Sub === 'aturan')) tswPaint(); }
   }
   let rekapPage = { s1:0, s3:0, s6:0, s9:0, s14:0 };
   const REKAP_PAGE_SIZE = 60;
@@ -3045,7 +3066,7 @@ self.onmessage = function(e){
       + '<tr><td class="l" style="font-weight:700">3.</td><td class="l" colspan="3" style="font-weight:700">TARGET PENJUALAN PRODUK KHUSUS</td>' + kcell(okTxt(khusus.ok, khOn)) + '</tr>'
       + '</tbody></table></div>';
     const grand = '<div class="tsw-note" style="font-size:14px;margin-top:28px;padding-top:14px;border-top:2px solid var(--input-border)"><b>TOTAL NILAI BONUS = Rp ' + rn(K.grand) + '</b></div>';
-    return '<div class="tsw"><div class="tsw-title">PENJUALAN &amp; TARGET SALES</div><div class="tsw-meta"><span><select class="tsw-sel" onchange="tswSetSales(this.value)">' + ['SEMUA'].concat(SO).map(n => '<option' + (n === tswSales ? ' selected' : '') + '>' + n + '</option>').join('') + '</select><button type="button" class="bon-nav" onclick="tswGoSub(\'bonus\')">🧮 Perhitungan Bonus</button></span><span>' + escHtml(periode) + '</span></div>'
+    return '<div class="tsw"><div class="tsw-title">PENJUALAN &amp; TARGET SALES</div><div class="tsw-meta"><span><select class="tsw-sel" onchange="tswSetSales(this.value)">' + ['SEMUA'].concat(SO).map(n => '<option' + (n === tswSales ? ' selected' : '') + '>' + n + '</option>').join('') + '</select><button type="button" class="bon-nav" onclick="tswGoSub(\'bonus\')">🧮 Perhitungan Bonus</button><button type="button" class="bon-nav" onclick="tswGoSub(\'aturan\')">📜 Aturan Umum Gaji &amp; Bonus</button></span><span>' + escHtml(periode) + '</span></div>'
       + sub('TARGET QTY PENJUALAN :') + tblT + note
       + rupa + grand + kat + '</div>';
   }
@@ -3166,6 +3187,103 @@ self.onmessage = function(e){
     finally { hideBusy(); }
   }
   let _tswList = [];
+
+  /* ===== Sub tab: Aturan Umum Gaji & Bonus — bisa diubah (tombol ✏️ Ubah): tambah/hapus baris, tambah/hapus tabel bonus; tersimpan di perangkat ini ===== */
+  function aturanDef(){ return {
+    judul: 'KEBIJAKAN GAJI & BONUS PENJUALAN',
+    tables: [
+      { title: 'TARGET PENJUALAN', cols: [{ h: 'Produk', t: 'text' }, { h: 'Target', t: 'text' }], rows: [['Minyak', '2.200 Q'], ['Mie', '2.000 Q'], ['Krupuk', '300 Q'], ['Sambal Cabe Gunung Botol 600 ml', '300 Q'], ['Rupa - Rupa', 'Rp 20.000.000']], notes: [] },
+      { title: 'GAJI POKOK BERDASARKAN PENCAPAIAN TARGET', cols: [{ h: 'Pencapaian', t: 'text' }, { h: 'Gaji Pokok (Rp)', t: 'num' }], rows: [['Tidak capai target', 780000], ['Capai satu (1) target', 1040000], ['Capai dua (2) target', 1352000], ['Capai tiga (3) target', 1554000], ['Capai empat (4) target', 1709000]], notes: [] },
+      { title: 'BONUS PRESENTASE PER KARTON FITRI', cols: [{ h: 'Volume Penjualan (Q)', t: 'text' }, { h: 'Bonus per Karton (Rp)', t: 'num' }, { h: 'Keterangan', t: 'text' }], rows: [['600', 150, 'Bonus presentase per karton'], ['1.000', 200, 'Bonus presentase per karton'], ['1.500', 250, 'Bonus presentase per karton'], ['2.000 ke atas', 300, 'Bonus presentase per karton']], notes: ['Bonus presentase dihitung per karton sesuai volume penjualan yang dicapai.'] },
+      { title: 'MIE & BIHUN', cols: [{ h: 'Volume Penjualan (Ball)', t: 'text' }, { h: 'Bonus / Insentif (Rp)', t: 'num' }, { h: 'Keterangan', t: 'text' }], rows: [['3.000 Ball ke atas', 300, 'Insentif per Ball'], ['2.000 Ball ke atas', 200, 'Insentif per Ball'], ['1.000 Ball ke atas', 150, 'Insentif per Ball']], notes: ['Angka di atas merupakan insentif/bonus per Ball untuk penjualan Mie & Bihun sesuai volume yang dicapai.'] }
+    ]
+  }; }
+  let ATURAN_GB = aturanDef(), aturanEdit = false;
+  try { const sv = JSON.parse(localStorage.getItem('aturanGB') || 'null'); if (sv && Array.isArray(sv.tables)) ATURAN_GB = sv; } catch(e){}
+  function aturanSave(){ try { localStorage.setItem('aturanGB', JSON.stringify(ATURAN_GB)); } catch(e){} }
+  function aturanRp(n){ return (n == null || n === '') ? '-' : Number(n).toLocaleString('id-ID'); }
+  function aturanRepaint(){ const b = document.getElementById('s15TargetBox'); if (b && s15Sub === 'aturan') b.innerHTML = aturanHtml(); }
+  function aturanToggleEdit(){ aturanEdit = !aturanEdit; aturanRepaint(); }
+  function aturanSetJudul(v){ ATURAN_GB.judul = v.trim() || 'KEBIJAKAN GAJI & BONUS PENJUALAN'; aturanSave(); }
+  function aturanSetTitle(ti, v){ ATURAN_GB.tables[ti].title = v.trim() || 'TABEL'; aturanSave(); }
+  function aturanSetHead(ti, ci, v){ ATURAN_GB.tables[ti].cols[ci].h = v.trim() || '-'; aturanSave(); }
+  function aturanSetCell(ti, ri, ci, v){
+    const T = ATURAN_GB.tables[ti];
+    if (T.cols[ci].t === 'num'){ const el = (v && v.tagName) ? v : null, d = String(el ? el.value : v).replace(/[^0-9]/g, ''); T.rows[ri][ci] = d === '' ? null : parseInt(d, 10); aturanSave(); if (el) el.value = d === '' ? '' : aturanRp(T.rows[ri][ci]); else aturanRepaint(); }
+    else { T.rows[ri][ci] = v.trim(); aturanSave(); }
+  }
+  function aturanSetNotes(ti, v){ ATURAN_GB.tables[ti].notes = v.split('\n').map(x => x.trim()).filter(Boolean); aturanSave(); aturanRepaint(); }
+  function aturanAddRow(ti){ const T = ATURAN_GB.tables[ti]; T.rows.push(T.cols.map(c => c.t === 'num' ? null : '')); aturanSave(); aturanRepaint(); }
+  function aturanDelRow(ti, ri){ const T = ATURAN_GB.tables[ti]; if (!confirm('Hapus baris ' + (ri + 1) + ' dari tabel "' + T.title + '"?')) return; T.rows.splice(ri, 1); aturanSave(); aturanRepaint(); }
+  function aturanAddTable(){
+    const nm = prompt('Nama tabel bonus baru (contoh: BONUS SAMBAL REFFIL 600 ML):', 'BONUS BARU');
+    if (nm === null) return;
+    ATURAN_GB.tables.push({ title: (nm.trim() || 'BONUS BARU').toUpperCase(), cols: [{ h: 'Volume Penjualan', t: 'text' }, { h: 'Bonus (Rp)', t: 'num' }, { h: 'Keterangan', t: 'text' }], rows: [['', null, '']], notes: [] });
+    aturanSave(); aturanRepaint();
+  }
+  function aturanDelTable(ti){ const T = ATURAN_GB.tables[ti]; if (!confirm('Hapus seluruh tabel "' + T.title + '"?')) return; ATURAN_GB.tables.splice(ti, 1); aturanSave(); aturanRepaint(); }
+  function aturanReset(){ if (!confirm('Kembalikan semua tabel ke isi bawaan? Perubahan yang sudah Anda buat akan hilang.')) return; ATURAN_GB = aturanDef(); aturanSave(); aturanRepaint(); }
+  function aturanHtml(){
+    const A = ATURAN_GB, E = escHtml, ed = aturanEdit;
+    const inp = (v, fn, num) => '<input class="atr-in' + (num ? ' n' : '') + '" value="' + E(num ? (v == null ? '' : aturanRp(v)) : v) + '"' + (num ? ' inputmode="numeric"' : '') + ' onchange="' + fn + '(this.value)">';
+    const tbls = A.tables.map((T, ti) => {
+      const head = '<thead><tr><th style="width:44px">No</th>' + T.cols.map((c, ci) => '<th>' + (ed ? '<input class="atr-in hd" value="' + E(c.h) + '" onchange="aturanSetHead(' + ti + ',' + ci + ',this.value)">' : E(c.h)) + '</th>').join('') + (ed ? '<th style="width:40px"></th>' : '') + '</tr></thead>';
+      const body = '<tbody>' + (T.rows.length ? T.rows.map((r, ri) => '<tr><td class="c">' + (ri + 1) + '</td>' + T.cols.map((c, ci) => {
+        const num = c.t === 'num';
+        return ed ? '<td' + (num ? '' : ' class="l"') + '>' + inp(r[ci], 'aturanSetCell(' + ti + ',' + ri + ',' + ci + ',' + (num ? 'this' : 'this.value') + ')', num).replace(/onchange="([^"]*)\(this\.value\)"/, 'onchange="$1"') + '</td>'
+                  : '<td' + (num ? '' : ' class="l"') + '>' + (num ? aturanRp(r[ci]) : E(r[ci])) + '</td>';
+      }).join('') + (ed ? '<td class="c"><button type="button" class="atr-x" title="Hapus baris" onclick="aturanDelRow(' + ti + ',' + ri + ')">✕</button></td>' : '') + '</tr>').join('') : '<tr><td class="c" colspan="' + (T.cols.length + 1 + (ed ? 1 : 0)) + '" style="color:var(--muted)">Belum ada baris</td></tr>') + '</tbody>';
+      const notes = ed
+        ? '<div class="atr-note"><div><b>CATATAN</b> <span style="color:var(--muted)">(satu catatan per baris; kosongkan bila tidak ada)</span></div><textarea class="atr-ta" rows="' + Math.max(2, T.notes.length + 1) + '" onchange="aturanSetNotes(' + ti + ',this.value)">' + E(T.notes.join('\n')) + '</textarea></div>'
+        : (T.notes.length ? '<div class="atr-note"><div><b>CATATAN:</b></div>' + T.notes.map(t => '<div>• ' + E(t) + '</div>').join('') + '</div>' : '');
+      const title = '<div class="atr-h"><span class="no">' + (ti + 1) + '</span>' + (ed ? '<input class="atr-in tt" value="' + E(T.title) + '" onchange="aturanSetTitle(' + ti + ',this.value)"><button type="button" class="bon-nav" style="margin-left:0" onclick="aturanAddRow(' + ti + ')">+ Baris</button><button type="button" class="atr-x" style="padding:4px 10px" title="Hapus tabel" onclick="aturanDelTable(' + ti + ')">🗑 Hapus tabel</button>' : E(T.title)) + '</div>';
+      return title + '<div class="tsw-scroll"><table class="tsw-t atr-t">' + head + body + '</table></div>' + notes;
+    }).join('');
+    const bar = '<div class="tsw-meta"><span style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><button type="button" class="bon-nav" style="margin-left:0" onclick="tswGoSub(\'target\')">&larr; Target &amp; Bonus Sales</button><button type="button" class="bon-nav" style="margin-left:0" onclick="tswGoSub(\'bonus\')">🧮 Perhitungan Bonus</button>'
+      + '<button type="button" class="bon-nav" style="margin-left:0" onclick="aturanToggleEdit()">' + (ed ? '✅ Selesai' : '✏️ Ubah') + '</button><button type="button" class="bon-nav" style="margin-left:0" onclick="aturanExportExcel()">💾 Simpan Excel</button></span><span>Aturan Umum Gaji &amp; Bonus</span></div>';
+    const edbar = ed ? '<div class="atr-note" style="border-left-color:#16a34a;display:flex;flex-wrap:wrap;gap:8px;align-items:center"><b>Mode ubah:</b> klik isian untuk mengganti; perubahan tersimpan otomatis di perangkat ini.<button type="button" class="bon-nav" onclick="aturanAddTable()">+ Tambah Tabel Bonus</button><button type="button" class="bon-nav" onclick="aturanReset()">↺ Reset ke bawaan</button></div>' : '';
+    return '<div class="tsw"><div class="tsw-title">' + (ed ? '<input class="atr-in tt" style="text-align:center;max-width:520px" value="' + E(A.judul) + '" onchange="aturanSetJudul(this.value)">' : E(A.judul)) + '</div>'
+      + bar + edbar + tbls
+      + (ed ? '<div style="margin-top:16px"><button type="button" class="bon-nav" style="margin-left:0" onclick="aturanAddTable()">+ Tambah Tabel Bonus</button></div>' : '')
+      + '</div>';
+  }
+  async function aturanExportExcel(){
+    if (typeof ExcelJS === 'undefined') return alert('Library Excel belum termuat (perlu internet). Muat ulang halaman lalu coba lagi.');
+    try {
+      showBusy('Membuat file Excel…');
+      const A = ATURAN_GB, NC = 1 + Math.max(2, ...A.tables.map(T => T.cols.length));
+      const wb = new ExcelJS.Workbook(); wb.creator = 'Rekap Penjualan'; wb.created = new Date();
+      const ws = wb.addWorksheet('Kebijakan Penjualan', { views: [{ showGridLines: false }] });
+      ws.columns = [6, 34, 26, 44, 20].slice(0, NC).map(w => ({ width: w }));
+      const thin = { style: 'thin', color: { argb: 'FF7F8FA6' } }, bd = { top: thin, left: thin, bottom: thin, right: thin };
+      const F = (b, sz, col) => ({ name: 'Arial', size: sz || 10, bold: !!b, color: { argb: col || 'FF000000' } });
+      const merged = (r, txt, font, al) => { ws.mergeCells(r, 1, r, NC); const c = ws.getCell(r, 1); c.value = txt; c.font = font; c.alignment = al || { vertical: 'middle' }; return c; };
+      const note = (r, txt) => { merged(r, txt, F(false), { wrapText: true, vertical: 'top' }); ws.getRow(r).height = Math.max(18, Math.ceil(txt.length / 90) * 15); };
+      let r = 1;
+      merged(r, A.judul, F(true, 14), { horizontal: 'center' }); r += 2;
+      A.tables.forEach((T, ti) => {
+        merged(r++, (ti + 1) + '.  ' + T.title, F(true, 11));
+        const hr = ws.getRow(r); hr.height = 22;
+        ['No'].concat(T.cols.map(c => c.h)).forEach((h, i) => { const c = hr.getCell(i + 1); c.value = h; c.font = F(true, 10, 'FFFFFFFF'); c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } }; c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; c.border = bd; });
+        r++;
+        T.rows.forEach((row, ri) => {
+          [ri + 1].concat(T.cols.map((c, ci) => row[ci] === '' ? null : row[ci])).forEach((v, i) => {
+            const c = ws.getRow(r).getCell(i + 1); c.value = v; c.font = F(false); c.border = bd;
+            const num = i > 0 && T.cols[i - 1].t === 'num';
+            c.alignment = { vertical: 'middle', wrapText: true, horizontal: i === 0 ? 'center' : (num ? 'right' : 'left') };
+            if (num) c.numFmt = '#,##0';
+          });
+          r++;
+        });
+        if (T.notes.length){ merged(r++, 'CATATAN:', F(true)); T.notes.forEach(t => note(r++, '• ' + t)); }
+        r++;
+      });
+      ws.pageSetup = { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true, margins: { left: 0.4, right: 0.4, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 }, printArea: 'A1:' + String.fromCharCode(64 + NC) + Math.max(1, r - 1) };
+      await downloadWorkbook(wb, 'Aturan_Umum_Gaji_Bonus.xlsx');
+    } catch(e){ console.error(e); alert('Gagal membuat Excel: ' + (e.message || e)); }
+    finally { hideBusy(); }
+  }
+
   /* ===== Sub tab: Perhitungan Bonus (di tab Penjualan & Target Sales) ===== */
   let tswBon = {};
   try { const sv = JSON.parse(localStorage.getItem('tswBonCfg') || 'null'); if (sv && typeof sv === 'object') tswBon = sv; } catch(e){}
@@ -3219,7 +3337,14 @@ self.onmessage = function(e){
   function bonAddSub(k, sc){ const g = bonC()[k].groups, tok = '@' + sc; if (!g.some(x => String(x).split(',').map(v => v.trim().toUpperCase()).includes(tok))) g.push(tok); bonSave(); tswPaint(false); }
   function bonAddGroup(k){ bonC()[k].groups.push(''); bonSave(); tswPaint(false); }
   function bonDelGroup(k, g){ if (!confirm('Hapus baris produk ini?')) return; bonC()[k].groups.splice(g, 1); bonSave(); tswPaint(false); }
-  function tswGoSub(v){ s15Sub = v; viewCache['s15'] = null; const p = document.getElementById('panel_s15'); if (p) { p.innerHTML = renderS15(); tswPaint(); } }
+  function tswGoSub(v){
+    s15Sub = v; viewCache['s15'] = null;
+    document.body.classList.add('is-target');
+    const p = document.getElementById('panel_s15'); if (p) { p.innerHTML = renderS15(); tswPaint(); }
+    const want = v === 'aturan' ? 'aturan' : 'target';
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('active', (x.getAttribute('onclick') || '').indexOf("s15OpenSub('" + want + "'") >= 0));
+    requestAnimationFrame(function(){ const el = document.querySelector('#panel_s15 .tsw'); if (el) el.scrollIntoView({ block: 'start' }); });
+  }
   /* hitung semua angka bonus (dipakai tampilan & Excel) */
   function bonCalc(){
     const c = bonC(), cf = tswC(), fit = _tswList, all = fit.concat(_tswRupa);
@@ -3286,7 +3411,7 @@ self.onmessage = function(e){
     const periode = filters.month ? monthLabel(filters.month) : 'Semua bulan';
     return '<div class="tsw"><div class="tsw-title">PERHITUNGAN BONUS</div><div class="tsw-meta"><span><select class="tsw-sel" onchange="tswSetSales(this.value)">'
       + ['SEMUA'].concat(SO).map(n => '<option' + (n === tswSales ? ' selected' : '') + '>' + n + '</option>').join('')
-      + '</select><button type="button" class="bon-nav" onclick="tswGoSub(\'target\')">&larr; Target &amp; Bonus Sales</button></span><span>' + escHtml(periode) + '</span></div>'
+      + '</select><button type="button" class="bon-nav" onclick="tswGoSub(\'target\')">&larr; Target &amp; Bonus Sales</button><button type="button" class="bon-nav" onclick="tswGoSub(\'aturan\')">📜 Aturan Umum Gaji &amp; Bonus</button></span><span>' + escHtml(periode) + '</span></div>'
       + '<div class="tsw-sub" style="margin-top:24px">TARGET QTY PENJUALAN :</div>' + t1
       + t2
       + '<div class="tsw-note" style="font-size:14px;margin-top:36px;padding-top:14px;border-top:2px solid var(--input-border)"><b>TOTAL NILAI BONUS = Rp ' + rn(K.grand) + '</b></div></div>';
@@ -3350,6 +3475,7 @@ self.onmessage = function(e){
   }
   async function tswPaint(reload){
     const box = document.getElementById('s15TargetBox'); if (!box) return;
+    if (s15Sub === 'aturan'){ tswToken++; box.innerHTML = aturanHtml(); return; }   /* aturan = konten statis, tidak perlu data penjualan */
     const my = (reload === false) ? tswToken : ++tswToken;   /* reload=false (bonSet dll) jangan batalkan load data yang sedang jalan */
     if (reload !== false) {
       try {
@@ -3358,10 +3484,10 @@ self.onmessage = function(e){
         tswApplyData(d);
       } catch(e){ console.warn('tswData gagal', e); if (my === tswToken) { _tswList = []; _tswRupa = []; } }
     }
-    if (my !== tswToken || !(s15Sub === 'target' || s15Sub === 'bonus')) return;
+    if (my !== tswToken || !(s15Sub === 'target' || s15Sub === 'bonus' || s15Sub === 'aturan')) return;
     const b2 = document.getElementById('s15TargetBox'); if (b2) b2.innerHTML = (s15Sub === 'bonus' ? bonHtml() : tswHtml(_tswList));
   }
-  function s15Repaint(){ viewCache['s15'] = null; const p = document.getElementById('panel_s15'); if (p) { p.innerHTML = renderS15(); if ((s15Sub === 'target' || s15Sub === 'bonus')) tswPaint(); } }
+  function s15Repaint(){ viewCache['s15'] = null; const p = document.getElementById('panel_s15'); if (p) { p.innerHTML = renderS15(); if ((s15Sub === 'target' || s15Sub === 'bonus' || s15Sub === 'aturan')) tswPaint(); } }
   function s14Total(rows){
     return rows.reduce((t, r) => { if (r[5] !== '') { t.q += N(r[1]); t.h += N(r[5]); t.v += N(r[6]); t.p += N(r[7]); } return t; }, { q: 0, h: 0, v: 0, p: 0 });
   }
