@@ -3392,7 +3392,7 @@ self.onmessage = function(e){
   function bonCalc(){
     const c = bonC(), cf = tswC(), fit = _tswList, all = fit.concat(_tswRupa);
     const sum = l => l.reduce((t, o) => t + o.q, 0);
-    const ft = aturanTbl('fitri'), fq = sum(fit), fitOk = N(cf.q) > 0 && fq >= N(cf.q), fitB = (ft && !cf.ov) ? Math.round(fq * aturanTier(ft, fq)) : (fitOk ? Math.round(fq * N(cf.b)) : 0);
+    const ft = aturanTbl('fitri'), fq = sum(fit), fitOk = N(cf.q) > 0 && fq >= N(cf.q), fitB = fitOk ? Math.round(fq * ((ft && !cf.ov) ? aturanTier(ft, fq) : N(cf.b))) : 0;   /* bonus Minyak hanya jika target tercapai; tarif per karton = tingkat Aturan Umum (atau angka khusus sales) */
     const items = c.items.map(it => {
       const q = sum(all.filter(o => bonHit(o.name, bonKw(it.kw))));
       let ti = -1; it.t.forEach((t, k) => { if (N(t.q) > 0 && q >= N(t.q) && (ti < 0 || N(t.q) > N(it.t[ti].q))) ti = k; });
