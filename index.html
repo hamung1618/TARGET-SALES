@@ -3109,8 +3109,8 @@ self.onmessage = function(e){
     const sub = txt => '<div class="tsw-sub" style="margin-top:28px">' + txt + '</div>';
     const ket = ok => '<td class="c ' + (ok ? 'ok' : 'no') + '">' + (ok ? 'target' : 'tidak target') + '</td>';
     /* 2. Target qty & bonus (hasil dari Hitung Gaji &amp; Bonus per Sales, hanya tampil) */
-    const headT = ['PRODUK','TARGET QTY','BONUS TARGET Rp','QTY PENJUALAN','KET','NILAI BONUS'].map(h => '<th>' + h + '</th>').join('');
-    let bodyT = '<tr><td class="l">Minyak Fitri (All Item)</td><td>' + (N(cf.q) ? rn(cf.q) : '') + '</td><td>' + (N(cf.b) ? rn(cf.b) : '') + '</td><td>' + rn(K.fq) + '</td>' + ket(K.fitOk) + '<td class="nb">' + (K.fitB ? rn(K.fitB) : '') + '</td></tr>';
+    const headT = ['PRODUK','TARGET QTY','BONUS TARGET Rp','QTY PENJUALAN','HPP','NOM PENJUALAN','PROFIT','KET','NILAI BONUS'].map(h => '<th>' + h + '</th>').join('');
+    let bodyT = '<tr><td class="l">Minyak Fitri (All Item)</td><td>' + (N(cf.q) ? rn(cf.q) : '') + '</td><td>' + (N(cf.b) ? rn(cf.b) : '') + '</td><td>' + rn(K.fq) + '</td><td>' + rn(K.fm.h) + '</td><td>' + rn(K.fm.v) + '</td><td>' + rn(K.fm.v - K.fm.h) + '</td>' + ket(K.fitOk) + '<td class="nb">' + (K.fitB ? rn(K.fitB) : '') + '</td></tr>';
     K.items.forEach(x => {
       let tiers = x.it.t.map((t, k) => ({ t: t, k: k })).filter(o => N(o.t.q) > 0 || N(o.t.b) > 0);
       if (!tiers.length) tiers = [{ t: x.it.t[0] || { q: 0, b: 0 }, k: 0 }];
@@ -3118,10 +3118,10 @@ self.onmessage = function(e){
       tiers.forEach((o, j) => {
         bodyT += '<tr>' + (j === 0 ? '<td class="l" rowspan="' + n + '">' + escHtml(x.it.nama) + '</td>' : '')
           + '<td>' + (N(o.t.q) ? rn(o.t.q) : '') + '</td><td>' + (N(o.t.b) ? rn(o.t.b) : '') + '</td>'
-          + (j === 0 ? '<td rowspan="' + n + '">' + rn(x.q) + '</td><td class="c ' + (x.ti >= 0 ? 'ok' : 'no') + '" rowspan="' + n + '">' + (x.ti >= 0 ? 'target ' + rn(x.it.t[x.ti].q) : 'tidak target') + '</td><td class="nb" rowspan="' + n + '">' + (x.B ? rn(x.B) : '') + '</td>' : '') + '</tr>';
+          + (j === 0 ? '<td rowspan="' + n + '">' + rn(x.q) + '</td>' + [x.h, x.v, x.v - x.h].map(z => '<td rowspan="' + n + '">' + rn(z) + '</td>').join('') + '<td class="c ' + (x.ti >= 0 ? 'ok' : 'no') + '" rowspan="' + n + '">' + (x.ti >= 0 ? 'target ' + rn(x.it.t[x.ti].q) : 'tidak target') + '</td><td class="nb" rowspan="' + n + '">' + (x.B ? rn(x.B) : '') + '</td>' : '') + '</tr>';
       });
     });
-    const tblT = '<style>.tsw-t.qc td:not(.l){text-align:center}.tsw-t.qc td.nb{font-weight:700}</style><div class="tsw-scroll"><table class="tsw-t qc" style="min-width:620px"><thead><tr>' + headT + '</tr></thead><tbody>' + bodyT + '</tbody></table></div>';
+    const tblT = '<style>.tsw-t.qc td:not(.l){text-align:center}.tsw-t.qc td.nb{font-weight:700}</style><div class="tsw-scroll"><table class="tsw-t qc" style="min-width:860px"><thead><tr>' + headT + '</tr></thead><tbody>' + bodyT + '</tbody></table></div>';
     const qOkN = (K.fitOk ? 1 : 0) + K.items.filter(x => x.ti >= 0).length;
     const qBonTot = N(K.fitB) + K.items.reduce((a, x) => a + N(x.B), 0);
     const note = '<div class="tsw-note"><b>' + (qOkN ? 'TARGET QTY TERCAPAI ' + qOkN + ' ITEM' : 'TIDAK ADA ITEM YG TARGET') + '</b>' + (qOkN ? ' &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>BONUS Rp. ' + rn(qBonTot) + '</b>' : '') + '</div>';
@@ -3156,7 +3156,7 @@ self.onmessage = function(e){
       const list = _tswList, K = bonCalc(), c = K.c, cf = K.cf, periode = filters.month ? monthLabel(filters.month) : 'Semua bulan';
       const wb = new ExcelJS.Workbook(); wb.creator = 'Rekap Penjualan'; wb.created = new Date();
       const ws = wb.addWorksheet('Perolehan Gaji & Bonus', { views: [{ showGridLines: false }] });
-      ws.columns = [32, 10, 10, 11, 11, 14, 15, 12, 20].map(w => ({ width: w }));
+      ws.columns = [32, 10, 12, 13, 14, 15, 15, 15, 20].map(w => ({ width: w }));
       const thin = { style: 'thin', color: { argb: 'FF7F8FA6' } }, bd = { top: thin, left: thin, bottom: thin, right: thin };
       const F = (b, col) => ({ name: 'Arial', size: 10, bold: !!b, color: { argb: col || 'FF000000' } });
       const fillY = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE699' } };
@@ -3169,20 +3169,22 @@ self.onmessage = function(e){
       const sub = (r, txt) => { ws.getCell(r, 1).value = txt; ws.getCell(r, 1).font = { name: 'Arial', size: 11, bold: true }; };
       let r = 5;
       sub(r, 'TARGET QTY PENJUALAN :');
-      r++; head(r, ['PRODUK','TARGET QTY','BONUS TARGET Rp','QTY PENJUALAN','KET','NILAI BONUS']); r++;
+      r++; head(r, ['PRODUK','TARGET QTY','BONUS TARGET Rp','QTY PENJUALAN','HPP','NOM PENJUALAN','PROFIT','KET','NILAI BONUS']); ws.getRow(r).height = 28; r++;
       put(r, 1, 'Minyak Fitri (All Item)'); put(r, 2, N(cf.q) || null, { num: 1 }); put(r, 3, N(cf.b) || null, { num: 1 }); put(r, 4, K.fq, { num: 1 });
-      put(r, 5, K.fitOk ? 'target' : 'tidak target', { b: 1, c: 1, col: kc(K.fitOk) }); put(r, 6, K.fitB || null, { num: 1 }); r++;
+      [K.fm.h, K.fm.v, K.fm.v - K.fm.h].forEach((z, i) => put(r, 5 + i, Math.round(z), { num: 1 }));
+      put(r, 8, K.fitOk ? 'target' : 'tidak target', { b: 1, c: 1, col: kc(K.fitOk) }); put(r, 9, K.fitB || null, { num: 1 }); r++;
       K.items.forEach(x => {
         let tiers = x.it.t.filter(t => N(t.q) > 0 || N(t.b) > 0);
         if (!tiers.length) tiers = [x.it.t[0] || { q: 0, b: 0 }];
         const n = tiers.length, r0 = r;
-        tiers.forEach((t, j) => { put(r, 2, N(t.q) || null, { num: 1 }); put(r, 3, N(t.b) || null, { num: 1 }); if (j > 0) { put(r, 1, null); put(r, 4, null); put(r, 5, null); put(r, 6, null); } r++; });
+        tiers.forEach((t, j) => { put(r, 2, N(t.q) || null, { num: 1 }); put(r, 3, N(t.b) || null, { num: 1 }); if (j > 0) [1, 4, 5, 6, 7, 8, 9].forEach(i => put(r, i, null)); r++; });
         put(r0, 1, x.it.nama, { wrap: 1 }); put(r0, 4, x.q, { num: 1 });
-        put(r0, 5, x.ti >= 0 ? 'target ' + rn(x.it.t[x.ti].q) : 'tidak target', { b: 1, c: 1, col: kc(x.ti >= 0) }); put(r0, 6, x.B || null, { num: 1 });
-        if (n > 1) ['A','D','E','F'].forEach(L => ws.mergeCells(L + r0 + ':' + L + (r0 + n - 1)));
+        [x.h, x.v, x.v - x.h].forEach((z, i) => put(r0, 5 + i, Math.round(z), { num: 1 }));
+        put(r0, 8, x.ti >= 0 ? 'target ' + rn(x.it.t[x.ti].q) : 'tidak target', { b: 1, c: 1, col: kc(x.ti >= 0) }); put(r0, 9, x.B || null, { num: 1 });
+        if (n > 1) ['A','D','E','F','G','H','I'].forEach(L => ws.mergeCells(L + r0 + ':' + L + (r0 + n - 1)));
       });
       { const qOk = (K.fitOk ? 1 : 0) + K.items.filter(x => x.ti >= 0).length, qB = N(K.fitB) + K.items.reduce((a, x) => a + N(x.B), 0);
-        r++; ws.mergeCells(r, 1, r, 6); ws.getCell(r, 1).value = qOk ? 'TARGET QTY TERCAPAI ' + qOk + ' ITEM          BONUS Rp. ' + rn(qB) : 'TIDAK ADA ITEM YG TARGET'; ws.getCell(r, 1).font = F(true); r++; }
+        r++; ws.mergeCells(r, 1, r, 9); ws.getCell(r, 1).value = qOk ? 'TARGET QTY TERCAPAI ' + qOk + ' ITEM          BONUS Rp. ' + rn(qB) : 'TIDAK ADA ITEM YG TARGET'; ws.getCell(r, 1).font = F(true); r++; }
       /* 3. Rupa Rupa */
       [['TARGET NOMINAL RUPA RUPA :', K.secs[0]], ['TARGET NOMINAL RUPA RUPA (Produk khusus) :', K.secs[1]]].forEach(([judul, S]) => {
         const k = S.k, RT = S.RT, hasRows = S.gl.some(g => g.length);
@@ -3421,10 +3423,12 @@ self.onmessage = function(e){
     const c = bonC(), cf = tswC(), fit = _tswList, all = fit.concat(_tswRupa);
     const sum = l => l.reduce((t, o) => t + o.q, 0);
     const ft = aturanTbl('fitri'), fq = sum(fit), fitOk = N(cf.q) > 0 && fq >= N(cf.q), fitB = fitOk ? Math.round(fq * ((ft && !cf.ov) ? aturanTier(ft, fq) : N(cf.b))) : 0;   /* bonus Minyak hanya jika target tercapai; tarif per karton = tingkat Aturan Umum (atau angka khusus sales) */
+    const uangQty = l => l.reduce((t, o) => { t.h += o.hpp; t.v += o.jual; return t; }, { h: 0, v: 0 });
+    const fm = uangQty(fit);
     const items = c.items.map(it => {
-      const q = sum(all.filter(o => bonHit(o.name, bonKw(it.kw))));
+      const cocok = all.filter(o => bonHit(o.name, bonKw(it.kw))), q = sum(cocok), m = uangQty(cocok);
       let ti = -1; it.t.forEach((t, k) => { if (N(t.q) > 0 && q >= N(t.q) && (ti < 0 || N(t.q) > N(it.t[ti].q))) ti = k; });
-      return { it, q, ti, B: ti >= 0 ? Math.round(q * N(it.t[ti].b)) : 0 };
+      return { it, q, h: m.h, v: m.v, ti, B: ti >= 0 ? Math.round(q * N(it.t[ti].b)) : 0 };
     });
     const sec = k => {
       const groups = c[k].groups.map(g => bonKw(g)), gl = groups.map(() => []);
@@ -3435,7 +3439,7 @@ self.onmessage = function(e){
     };
     const S1 = sec('rupa'), S2 = sec('khusus');
     const grand = fitB + items.reduce((t, x) => t + x.B, 0) + S1.B + S2.B;
-    return { c, cf, fq, fitOk, fitB, items, secs: [S1, S2], grand };
+    return { c, cf, fq, fm, fitOk, fitB, items, secs: [S1, S2], grand };
   }
   function bonHtml(){
     const K = bonCalc(), c = K.c, cf = K.cf;
