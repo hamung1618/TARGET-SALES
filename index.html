@@ -2019,7 +2019,13 @@ self.onmessage = function(e){
     if (tab === 's14'){
       const rows = s14Rows(), T = s14Total(rows);
       const xl = rows.map(r => [r[0], r[1] === '' ? '' : N(r[1]), r[2], s14PriceXl(r[3]), s14PriceXl(r[4]), r[5], r[6], r[7], r[8]]);
-      const tag = (filters.sales || 'Semua_Sales').replace(/[^A-Za-z0-9]+/g, '_') + '_' + (filters.month ? monthLabel(filters.month) : 'Semua_Bulan').replace(/[^A-Za-z0-9]+/g, '_');
+      /* nama file mengikuti filter yang aktif: Sales_Bulan[_Kategori][_Sub_...][_N_Produk][_Urut_...] */
+      const tagParts = [filters.sales || 'Semua_Sales', filters.month ? monthLabel(filters.month) : 'Semua_Bulan'];
+      if (s14Cat) tagParts.push(s14CatLabel());
+      if (s14Sub) tagParts.push('Sub_' + rupaSubLabel(s14Sub));
+      if (s14Sel.size) tagParts.push(s14Sel.size + '_Produk');
+      if (s14Sort !== 'nama') tagParts.push('Urut_' + s14SortLabel());
+      const tag = tagParts.map(x => String(x).replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '')).filter(Boolean).join('_');
       return { name:'Rekap per Sales', title:'Rekap Penjualan per Sales', rightTitle: s14SalesLabel(), titleColor:'FF000000', noPrint:true, info: s14ExcelInfo(), fileName:'Rekap_Penjualan_per_Sales_' + tag + '.xlsx',
         portrait:true, head:['PRODUK','QTY','SATUAN','H BELI','H JUAL','HPP','NOM PENJUALAN','PROFIT','KET'], types:['t','n','c','nt','nt','n','n','n','t'], rows: xl,
         total: rows.length ? ['TOTAL',T.q,'','','',T.h,T.v,T.p,''] : null };
