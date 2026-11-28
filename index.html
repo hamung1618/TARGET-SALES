@@ -562,9 +562,9 @@ body.dark .s16table tr.bad td.sel{color:#fca5a5}
             <button type="button" class="tabs-toggle" id="tabsToggleBtn" onclick="toggleTabsMenu(event)"><span id="tabsToggleLabel">📑 Data Tab</span><span class="chev">▼</span></button>
             <div class="tabs tabs-collapsible" id="tabsMenu">
               <button onclick="show('s6',this)">Faktur</button>
-              <button onclick="s15OpenSub('aturan',this)">📜 Aturan Umum Gaji &amp; Bonus</button>
+              <button class="active" onclick="s15OpenSub('aturan',this)">📜 Aturan Umum Gaji &amp; Bonus</button>
               <button onclick="s15OpenSub('bonus',this)">🧮 Hitung Gaji &amp; Bonus per Sales</button>
-              <button class="active" onclick="s15OpenSub('target',this)">🎯 Perolehan Gaji &amp; Bonus Sales</button>
+              <button onclick="s15OpenSub('target',this)">🎯 Perolehan Gaji &amp; Bonus Sales</button>
               <button onclick="show('s1',this)">Rekap Penjualan All Sales</button>
               <button onclick="show('s14',this)">Rekap Penjualan per Sales</button>
               <button onclick="show('s9',this)">Data Harga</button>
@@ -2938,7 +2938,7 @@ self.onmessage = function(e){
   /* ===== Penjualan & Target Sales ===== */
   function renderS15(){ return '<div id="s15TargetBox"><div class="tsw-empty">Menyiapkan data…</div></div>'; }
   /* ===== Sub-tab: PEROLEHAN GAJI & BONUS SALES (per sales, produk Fitri) ===== */
-  let s15Sub = 'target';
+  let s15Sub = 'aturan';
   let tswSales = 'RAJU', tswToken = 0;
   let tswCfg = { RAJU: { q: 2200, b: 300 } };   /* target qty & bonus/karton per sales (disimpan di perangkat ini) */
   try { const sv = JSON.parse(localStorage.getItem('tswCfg') || 'null'); if (sv && typeof sv === 'object') tswCfg = Object.assign(tswCfg, sv); } catch(e){}
@@ -4710,8 +4710,8 @@ self.onmessage = function(e){
 
   (async function init(){
     initTheme();
-    /* posisi awal: tab Perolehan Gaji & Bonus Sales (sub tab Target) */
-    try { _activeTab = 's15'; s15Sub = 'target'; document.body.classList.add('is-target'); } catch(e){}
+    /* posisi awal: tab Aturan Umum Gaji & Bonus */
+    try { _activeTab = 's15'; s15Sub = 'aturan'; document.body.classList.add('is-target'); } catch(e){}
     await initDB();
     /* Data lokal (IndexedDB) langsung ditampilkan; sinkron ke cloud berjalan di belakang layar dan hanya me-refresh bila ada yang berubah */
     let hadLocal = false;
