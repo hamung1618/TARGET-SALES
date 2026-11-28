@@ -3143,7 +3143,7 @@ self.onmessage = function(e){
     };
     const rupa = secR(K.secs[0], 'TARGET NOMINAL RUPA RUPA') + secR(K.secs[1], 'TARGET NOMINAL RUPA RUPA (Produk khusus)');
     const grand = '<div class="tsw-note" style="font-size:14px;margin-top:28px;padding-top:14px;border-top:2px solid var(--input-border)"><b>TOTAL NILAI BONUS = Rp ' + rn(K.grand) + '</b></div>';
-    return '<div class="tsw"><div class="tsw-title">PEROLEHAN GAJI &amp; BONUS SALES</div><div class="tsw-meta"><span><select class="tsw-sel" onchange="tswSetSales(this.value)">' + ['SEMUA'].concat(SO).map(n => '<option' + (n === tswSales ? ' selected' : '') + '>' + n + '</option>').join('') + '</select><button type="button" class="bon-nav" onclick="tswGoSub(\'bonus\')">&larr; Hitung Gaji &amp; Bonus per Sales</button></span><span>' + escHtml(periode) + '</span></div>'
+    return '<div class="tsw"><div class="tsw-title">PEROLEHAN GAJI &amp; BONUS SALES</div><div class="tsw-meta"><span><select class="tsw-sel" onchange="tswSetSales(this.value)">' + ['SEMUA'].concat(SO).map(n => '<option' + (n === tswSales ? ' selected' : '') + '>' + n + '</option>').join('') + '</select><button type="button" class="bon-nav" onclick="tswGoSub(\'bonus\')">&larr; Hitung Gaji &amp; Bonus per Sales</button></span><span style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">' + escHtml(periode) + '<button type="button" class="bon-nav" style="margin-left:0" onclick="tswExportExcel()">💾 Save Excel</button></span></div>'
       + sub('TARGET QTY PENJUALAN :') + tblT + note
       + rupa + grand + slipHtml(K, periode) + '</div>';
   }
