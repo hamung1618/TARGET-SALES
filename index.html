@@ -3061,28 +3061,35 @@ self.onmessage = function(e){
   }
   function slipSheet(wb, K, periode){
       const D = slipData(K), wsS = wb.addWorksheet('Slip Gaji', { views: [{ showGridLines: false }] });
-      wsS.columns = [22, 17, 17, 15].map(w => ({ width: w }));
-      const ln = { style: 'thin', color: { argb: 'FF000000' } };
-      const cel = (rr, cc, v, o) => { o = o || {}; const x = wsS.getCell(rr, cc); x.value = v; x.font = { name: 'Courier New', size: o.sz || 10, bold: !!o.b, color: { argb: o.col || 'FF000000' } }; x.alignment = { horizontal: o.al || 'left', vertical: 'middle', wrapText: !!o.wrap }; if (o.num) x.numFmt = '"Rp "#,##0'; return x; };
-      const garis = rr => { for (let cc = 1; cc <= 4; cc++){ const x = wsS.getCell(rr, cc); x.border = Object.assign({}, x.border, { bottom: ln }); } };
-      wsS.mergeCells('A1:D1'); cel(1, 1, 'SLIP GAJI & BONUS SALES', { b: 1, sz: 13, al: 'center' });
-      wsS.mergeCells('A3:B3'); cel(3, 1, 'Nama : ' + tswSales, { b: 1 }); wsS.mergeCells('C3:D3'); cel(3, 3, 'Periode: ' + periode, { al: 'right' }); garis(3);
-      let rs = 4;
-      cel(rs, 1, 'A. PENCAPAIAN TARGET', { b: 1 }); rs++;
-      ['Produk', 'Target', 'Realisasi', 'Status'].forEach((h, i) => cel(rs, i + 1, h, { al: i === 1 || i === 2 ? 'right' : 'left', col: 'FF64748B' })); rs++;
-      D.target.forEach(o => { cel(rs, 1, o.nama, { wrap: 1 }); cel(rs, 2, o.t, { al: 'right' }); cel(rs, 3, o.r, { al: 'right' }); cel(rs, 4, o.ok ? '✓ Tercapai' : '× Belum', { b: 1, col: o.ok ? 'FF15803D' : 'FFB91C1C' }); rs++; });
-      cel(rs, 1, 'Target tercapai: ' + D.n + ' dari ' + D.jml); garis(rs); rs++;
-      cel(rs, 1, 'B. PENERIMAAN', { b: 1 }); rs++;
-      const uang = (nama, v, o) => { o = o || {}; wsS.mergeCells(rs, 1, rs, 3); cel(rs, 1, nama, { b: o.b, sz: o.sz, al: o.al, wrap: 1 }); const x = cel(rs, 4, v == null ? 'Rp ........' : v, { b: o.b, sz: o.sz, al: v == null ? 'left' : 'right' }); x.numFmt = '"Rp "#,##0';   /* kosong: tinggal ketik angkanya */ rs++; };
-      uang(D.gpNama, D.gp); D.bonus.forEach(x => uang(x.nama, x.isi ? null : x.v));
-      uang('Total bonus', D.manual ? null : D.totBonus, { b: 1, al: 'right' }); garis(rs - 1);
-      uang('TOTAL DITERIMA', D.manual ? null : D.total, { b: 1, sz: 12 }); wsS.getRow(rs - 1).height = 22; garis(rs - 1);
-      for (let rr = 1; rr < rs; rr++){   /* bingkai luar slip */
-        const a = wsS.getCell(rr, 1), z = wsS.getCell(rr, 4);
+      wsS.columns = [4.9, 21.3, 16.3, 16.4, 24.3].map(w => ({ width: w }));   /* kolom A = margin kiri */
+      const ln = { style: 'thin', color: { argb: 'FF000000' } }, abu = 'FF64748B';
+      let rs = 1;
+      const baris = h => { wsS.getRow(rs).height = h || 16; return rs++; };
+      const cel = (rr, cc, v, o) => { o = o || {}; const x = wsS.getCell(rr, cc); x.value = v; x.font = { name: 'Courier New', size: 12, bold: !!o.b, color: { argb: o.col || 'FF000000' } }; x.alignment = { horizontal: o.al || 'left', vertical: o.v || 'middle', wrapText: !!o.wrap, indent: o.in || 0 }; return x; };
+      const garis = rr => { for (let cc = 2; cc <= 5; cc++){ const x = wsS.getCell(rr, cc); x.border = Object.assign({}, x.border, { bottom: ln }); } };
+      const tinggi = (teks, lebar) => Math.max(1, Math.ceil(String(teks).length / lebar)) * 16;
+      baris(15);   /* margin atas */
+      let r = baris(); wsS.mergeCells(r, 2, r, 5); cel(r, 2, 'SLIP GAJI & BONUS SALES', { b: 1, al: 'center' });
+      baris();
+      r = baris(); wsS.mergeCells(r, 2, r, 3); cel(r, 2, 'Nama : ' + tswSales, { b: 1 }); wsS.mergeCells(r, 4, r, 5); cel(r, 4, 'Periode: ' + periode, { al: 'right' }); garis(r);
+      r = baris(); cel(r, 2, 'A. PENCAPAIAN TARGET', { b: 1 });
+      r = baris(); ['Produk', 'Target', 'Realisasi', 'Status'].forEach((h, i) => cel(r, i + 2, h, { al: ['left', 'right', 'right', 'center'][i], col: abu }));
+      D.target.forEach(o => { r = baris(tinggi(o.nama, 15)); cel(r, 2, o.nama, { wrap: 1 }); cel(r, 3, o.t, { al: 'right' }); cel(r, 4, o.r, { al: 'right' }); cel(r, 5, o.ok ? '✓ Tercapai' : '× Belum', { b: 1, al: 'center', col: o.ok ? 'FF15803D' : 'FFB91C1C' }); });
+      r = baris(); cel(r, 2, 'Target tercapai: ' + D.n + ' dari ' + D.jml); garis(r);
+      r = baris(); cel(r, 2, 'B. PENERIMAAN', { b: 1 });
+      /* nilai null = diisi owner: hanya tertulis "Rp", tinggal ketik angkanya */
+      const nilai = (rr, cc, v, o) => { o = o || {}; const x = cel(rr, cc, v == null ? 'Rp' : v, { b: o.b, al: v == null ? 'left' : 'right', in: v == null ? 0 : o.in }); x.numFmt = '"Rp "#,##0'; };
+      const uang = (nama, v, o) => { o = o || {}; const rr = baris(tinggi(nama, 44)); wsS.mergeCells(rr, 2, rr, 4); cel(rr, 2, nama, { wrap: 1 }); nilai(rr, 5, v, o); };
+      uang(D.gpNama, D.gp, { in: 1 }); D.bonus.forEach(x => uang(x.nama, x.isi ? null : x.v));
+      r = baris(); if (!D.manual){ wsS.mergeCells(r, 2, r, 4); cel(r, 2, 'Total bonus', { b: 1, al: 'right' }); nilai(r, 5, D.totBonus, { b: 1 }); } garis(r);
+      r = baris(40); wsS.mergeCells(r, 2, r, 3); cel(r, 2, 'TOTAL DITERIMA', { b: 1 }); wsS.mergeCells(r, 4, r, 5); nilai(r, 4, D.manual ? null : D.total, { b: 1 }); garis(r);
+      const akhir = r;
+      for (let rr = 2; rr <= akhir; rr++){   /* bingkai kiri & kanan */
+        const a = wsS.getCell(rr, 2), z = wsS.getCell(rr, 5);
         a.border = Object.assign({}, a.border, { left: ln }); z.border = Object.assign({}, z.border, { right: ln });
       }
-      for (let cc = 1; cc <= 4; cc++){ const x = wsS.getCell(1, cc); x.border = Object.assign({}, x.border, { top: ln }); }
-      wsS.pageSetup = { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true, margins: { left: 0.4, right: 0.4, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 }, printArea: 'A1:D' + (rs - 1) };
+      for (let cc = 2; cc <= 5; cc++){ const x = wsS.getCell(2, cc); x.border = Object.assign({}, x.border, { top: ln }); }
+      wsS.pageSetup = { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true, margins: { left: 0.4, right: 0.4, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 }, printArea: 'A1:E' + akhir };
   }
   async function slipExportExcel(){
     if (typeof ExcelJS === 'undefined') return alert('Library Excel belum termuat (perlu internet). Muat ulang halaman lalu coba lagi.');
