@@ -3050,9 +3050,9 @@ self.onmessage = function(e){
     };
     const rupa = secR(K.secs[0], 'TARGET NOMINAL RUPA RUPA') + secR(K.secs[1], 'TARGET NOMINAL RUPA RUPA (Produk khusus)');
     /* 4. Kategori target (keterangan gaji pokok) + kolom KET (otomatis dari hasil perhitungan, lebar untuk tulis manual) */
-    const GP = [['tidak capai target', 780000], ['capai satu (1) target', 1040000], ['capai dua (2) target', 1352000], ['capai tiga (3) target', 1554000], ['capai empat (4) target', 1709000]];
+    const GP = aturanGP() || [['tidak capai target', 780000], ['capai satu (1) target', 1040000], ['capai dua (2) target', 1352000], ['capai tiga (3) target', 1554000], ['capai empat (4) target', 1709000]];
     const tqR = N(c.rupa.tq) || 20000000;
-    const cnt = Math.min(4, (K.fitOk ? 1 : 0) + K.items.reduce((t, x) => t + x.it.t.filter(tt => N(tt.q) > 0 && x.q >= N(tt.q)).length, 0));
+    const cnt0 = aturanCount(K), cnt = Math.min(GP.length - 1, cnt0 != null ? cnt0 : ((K.fitOk ? 1 : 0) + K.items.reduce((t, x) => t + x.it.t.filter(tt => N(tt.q) > 0 && x.q >= N(tt.q)).length, 0)));
     const okTxt = (ok, on) => on ? '<span class="' + (ok ? 'ok' : 'no') + '" style="font-weight:700;color:' + (ok ? '#15803d' : '#b91c1c') + '">' + (ok ? 'Tercapai' : 'Tidak tercapai') + '</span>' : '';
     const itemKet = '<span style="font-size:11px;font-weight:400">Minyak: ' + (K.fitOk ? 'target' : 'tidak target') + K.items.map(x => ' &nbsp;|&nbsp; ' + escHtml(String(x.it.nama).split('(')[0].trim()) + ': ' + (x.ti >= 0 ? 'target ' + rn(x.it.t[x.ti].q) : 'tidak target')).join('') + '</span>';
     const kcell = (inner) => '<td class="l" style="min-width:260px;width:300px;height:26px">' + (inner || '') + '</td>';
@@ -3191,17 +3191,51 @@ self.onmessage = function(e){
 
   /* ===== Sub tab: Aturan Umum Gaji & Bonus — bisa diubah (tombol ✏️ Ubah): tambah/hapus baris, tambah/hapus tabel bonus; tersimpan di perangkat ini ===== */
   function aturanDef(){ return {
+    ver: 2,
     judul: 'KEBIJAKAN GAJI & BONUS PENJUALAN',
     tables: [
-      { title: 'TARGET PENJUALAN', cols: [{ h: 'Produk', t: 'text' }, { h: 'Target', t: 'text' }], rows: [['Minyak', '2.200 Q'], ['Mie', '2.000 Q'], ['Krupuk', '300 Q'], ['Sambal Cabe Gunung Botol 600 ml', '300 Q'], ['Rupa - Rupa', 'Rp 20.000.000']], notes: [] },
-      { title: 'GAJI POKOK BERDASARKAN PENCAPAIAN TARGET', cols: [{ h: 'Pencapaian', t: 'text' }, { h: 'Gaji Pokok (Rp)', t: 'num' }], rows: [['Tidak capai target', 780000], ['Capai satu (1) target', 1040000], ['Capai dua (2) target', 1352000], ['Capai tiga (3) target', 1554000], ['Capai empat (4) target', 1709000]], notes: [] },
-      { title: 'BONUS PRESENTASE PER KARTON FITRI', cols: [{ h: 'Volume Penjualan (Q)', t: 'text' }, { h: 'Bonus per Karton (Rp)', t: 'num' }, { h: 'Keterangan', t: 'text' }], rows: [['600', 150, 'Bonus presentase per karton'], ['1.000', 200, 'Bonus presentase per karton'], ['1.500', 250, 'Bonus presentase per karton'], ['2.000 ke atas', 300, 'Bonus presentase per karton']], notes: ['Bonus presentase dihitung per karton sesuai volume penjualan yang dicapai.'] },
-      { title: 'MIE & BIHUN', cols: [{ h: 'Volume Penjualan (Ball)', t: 'text' }, { h: 'Bonus / Insentif (Rp)', t: 'num' }, { h: 'Keterangan', t: 'text' }], rows: [['3.000 Ball ke atas', 300, 'Insentif per Ball'], ['2.000 Ball ke atas', 200, 'Insentif per Ball'], ['1.000 Ball ke atas', 150, 'Insentif per Ball']], notes: ['Angka di atas merupakan insentif/bonus per Ball untuk penjualan Mie & Bihun sesuai volume yang dicapai.'] }
+      { key: 'target', title: 'TARGET PENJUALAN', cols: [{ h: 'Produk', t: 'text' }, { h: 'Target', t: 'num' }, { h: 'Satuan', t: 'text' }], rows: [['Minyak', 2200, 'Q'], ['Mie', 2000, 'Q'], ['Krupuk', 300, 'Q'], ['Sambal Cabe Gunung Botol 600 ml', 300, 'Q'], ['Rupa - Rupa', 20000000, 'Rp']], notes: [] },
+      { key: 'gaji', title: 'GAJI POKOK BERDASARKAN PENCAPAIAN TARGET', cols: [{ h: 'Pencapaian', t: 'text' }, { h: 'Gaji Pokok (Rp)', t: 'num' }], rows: [['Tidak capai target', 780000], ['Capai satu (1) target', 1040000], ['Capai dua (2) target', 1352000], ['Capai tiga (3) target', 1554000], ['Capai empat (4) target', 1709000]], notes: [] },
+      { key: 'fitri', title: 'BONUS PRESENTASE PER KARTON FITRI (MINYAK)', cols: [{ h: 'Volume Penjualan (Q, ke atas)', t: 'num' }, { h: 'Bonus per Karton (Rp)', t: 'num' }, { h: 'Keterangan', t: 'text' }], rows: [[600, 150, 'Bonus presentase per karton'], [1000, 200, 'Bonus presentase per karton'], [1500, 250, 'Bonus presentase per karton'], [2000, 300, 'Bonus presentase per karton']], notes: ['Bonus presentase dihitung per karton sesuai volume penjualan yang dicapai.'] },
+      { key: 'mie', title: 'MIE & BIHUN', cols: [{ h: 'Volume Penjualan (Ball, ke atas)', t: 'num' }, { h: 'Bonus / Insentif per Ball (Rp)', t: 'num' }, { h: 'Keterangan', t: 'text' }], rows: [[1000, 150, 'Insentif per Ball'], [2000, 200, 'Insentif per Ball'], [3000, 300, 'Insentif per Ball']], notes: ['Angka di atas merupakan insentif/bonus per Ball untuk penjualan Mie & Bihun sesuai volume yang dicapai.'] }
     ]
   }; }
   let ATURAN_GB = aturanDef(), aturanEdit = false;
-  try { const sv = JSON.parse(localStorage.getItem('aturanGB') || 'null'); if (sv && Array.isArray(sv.tables)) ATURAN_GB = sv; } catch(e){}
-  function aturanSave(){ try { localStorage.setItem('aturanGB', JSON.stringify(ATURAN_GB)); } catch(e){} }
+  try { const sv = JSON.parse(localStorage.getItem('aturanGB') || 'null'); if (sv && sv.ver === 2 && Array.isArray(sv.tables)) ATURAN_GB = sv; } catch(e){}
+  function aturanSave(){ try { localStorage.setItem('aturanGB', JSON.stringify(ATURAN_GB)); } catch(e){} aturanSync(); }
+  /* --- Aturan Umum = sumber data untuk tab Perhitungan Bonus & Target Sales (tabel dikenali lewat key) --- */
+  function aturanTbl(k){ return (ATURAN_GB.tables || []).find(T => T.key === k) || null; }
+  function aturanTarget(re){ const T = aturanTbl('target'); if (!T) return null; const r = T.rows.find(x => re.test(String(x[0]))); return r && N(r[1]) > 0 ? { n: r[0], v: N(r[1]) } : null; }
+  function aturanTier(T, q){ let b = 0, bv = -1; T.rows.forEach(r => { const v = N(r[0]); if (v > 0 && v <= q && v > bv){ bv = v; b = N(r[1]); } }); return b; }
+  function aturanGP(){ const T = aturanTbl('gaji'); return T && T.rows.length ? T.rows.map(r => [String(r[0]).toLowerCase(), N(r[1])]) : null; }
+  function aturanCount(K){
+    const T = aturanTbl('target'); if (!T) return null; let n = 0;
+    T.rows.forEach(r => {
+      const v = N(r[1]), nm = String(r[0]); if (!(v > 0)) return;
+      if (/minyak/i.test(nm)) n += K.fitOk ? 1 : 0;
+      else if (/rupa/i.test(nm)) n += K.secs[0].ok ? 1 : 0;
+      else { const w = bonNorm(nm.split(/\s+/)[0]), x = K.items.find(i => w && bonNorm(i.it.nama).includes(w)); if (x && x.q >= v) n++; }
+    });
+    return n;
+  }
+  function aturanSync(){   /* salin target & tingkat bonus dari Aturan Umum ke pengaturan semua sales */
+    try {
+      const m = aturanTarget(/minyak/i), sam = aturanTarget(/sambal/i), rp = aturanTarget(/rupa/i), ft = aturanTbl('fitri'), mt = aturanTbl('mie');
+      const names = new Set(['SEMUA'].concat(typeof SO !== 'undefined' ? SO : [], Object.keys(tswCfg), Object.keys(tswBon))), keep = tswSales;
+      names.forEach(nm => {
+        tswSales = nm;
+        const cf = tswC(); if (m){ cf.q = m.v; if (ft) cf.b = aturanTier(ft, m.v); }
+        const c = bonC();
+        c.items.forEach(it => {
+          if (/^mie/i.test(it.nama) && mt && mt.rows.length) it.t = mt.rows.map(r => ({ q: N(r[0]), b: N(r[1]) })).sort((x, y) => x.q - y.q);
+          else if (/sambal/i.test(it.nama) && sam && it.t.length) it.t[0].q = sam.v;
+        });
+        if (rp) c.rupa.tq = rp.v;
+      });
+      tswSales = keep; tswSave(); bonSave();
+      try { localStorage.setItem('aturanSyncV', '1'); } catch(e){}
+    } catch(e){ console.warn('sinkron aturan gagal', e); }
+  }
   function aturanRp(n){ return (n == null || n === '') ? '-' : Number(n).toLocaleString('id-ID'); }
   function aturanRepaint(){ const b = document.getElementById('s15TargetBox'); if (b && s15Sub === 'aturan') b.innerHTML = aturanHtml(); }
   function aturanToggleEdit(){ aturanEdit = !aturanEdit; aturanRepaint(); }
@@ -3240,11 +3274,12 @@ self.onmessage = function(e){
       const title = '<div class="atr-h"><span class="no">' + (ti + 1) + '</span>' + (ed ? '<input class="atr-in tt" value="' + E(T.title) + '" onchange="aturanSetTitle(' + ti + ',this.value)"><button type="button" class="bon-nav" style="margin-left:0" onclick="aturanAddRow(' + ti + ')">+ Baris</button><button type="button" class="atr-x" style="padding:4px 10px" title="Hapus tabel" onclick="aturanDelTable(' + ti + ')">🗑 Hapus tabel</button>' : E(T.title)) + '</div>';
       return title + '<div class="tsw-scroll"><table class="tsw-t atr-t">' + head + body + '</table></div>' + notes;
     }).join('');
+    const info = '<div class="atr-note" style="border-left-color:#1f4e78"><b>Terhubung otomatis ke Perhitungan Bonus &amp; Target &amp; Bonus Sales:</b> tabel Target Penjualan, Gaji Pokok, Bonus Minyak, dan Mie &amp; Bihun. Mengubah angkanya di sini langsung dipakai di kedua tab itu untuk semua sales. Tabel bonus tambahan hanya sebagai catatan.</div>';
     const bar = '<div class="tsw-meta"><span style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><button type="button" class="bon-nav" style="margin-left:0" onclick="tswGoSub(\'bonus\')">🧮 Perhitungan Bonus &rarr;</button>'
       + '<button type="button" class="bon-nav" style="margin-left:0" onclick="aturanToggleEdit()">' + (ed ? '✅ Selesai' : '✏️ Ubah') + '</button><button type="button" class="bon-nav" style="margin-left:0" onclick="aturanExportExcel()">💾 Simpan Excel</button></span><span>Aturan Umum Gaji &amp; Bonus</span></div>';
     const edbar = ed ? '<div class="atr-note" style="border-left-color:#16a34a;display:flex;flex-wrap:wrap;gap:8px;align-items:center"><b>Mode ubah:</b> klik isian untuk mengganti; perubahan tersimpan otomatis di perangkat ini.<button type="button" class="bon-nav" onclick="aturanAddTable()">+ Tambah Tabel Bonus</button><button type="button" class="bon-nav" onclick="aturanReset()">↺ Reset ke bawaan</button></div>' : '';
     return '<div class="tsw"><div class="tsw-title">' + (ed ? '<input class="atr-in tt" style="text-align:center;max-width:520px" value="' + E(A.judul) + '" onchange="aturanSetJudul(this.value)">' : E(A.judul)) + '</div>'
-      + bar + edbar + tbls
+      + bar + info + edbar + tbls
       + (ed ? '<div style="margin-top:16px"><button type="button" class="bon-nav" style="margin-left:0" onclick="aturanAddTable()">+ Tambah Tabel Bonus</button></div>' : '')
       + '</div>';
   }
@@ -3350,7 +3385,7 @@ self.onmessage = function(e){
   function bonCalc(){
     const c = bonC(), cf = tswC(), fit = _tswList, all = fit.concat(_tswRupa);
     const sum = l => l.reduce((t, o) => t + o.q, 0);
-    const fq = sum(fit), fitOk = N(cf.q) > 0 && fq >= N(cf.q), fitB = fitOk ? Math.round(fq * N(cf.b)) : 0;
+    const ft = aturanTbl('fitri'), fq = sum(fit), fitOk = N(cf.q) > 0 && fq >= N(cf.q), fitB = ft ? Math.round(fq * aturanTier(ft, fq)) : (fitOk ? Math.round(fq * N(cf.b)) : 0);
     const items = c.items.map(it => {
       const q = sum(all.filter(o => bonHit(o.name, bonKw(it.kw))));
       let ti = -1; it.t.forEach((t, k) => { if (N(t.q) > 0 && q >= N(t.q) && (ti < 0 || N(t.q) > N(it.t[ti].q))) ti = k; });
@@ -3476,6 +3511,7 @@ self.onmessage = function(e){
   }
   async function tswPaint(reload){
     const box = document.getElementById('s15TargetBox'); if (!box) return;
+    try { if (localStorage.getItem('aturanSyncV') !== '1') aturanSync(); } catch(e){}
     if (s15Sub === 'aturan'){ tswToken++; box.innerHTML = aturanHtml(); return; }   /* aturan = konten statis, tidak perlu data penjualan */
     const my = (reload === false) ? tswToken : ++tswToken;   /* reload=false (bonSet dll) jangan batalkan load data yang sedang jalan */
     if (reload !== false) {
