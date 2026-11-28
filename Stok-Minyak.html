@@ -181,6 +181,7 @@ input.in[type=number]{-moz-appearance:textfield}
         <label for="monthSel">Bulan</label>
         <select id="monthSel" onchange="selectMonth(this.value)"></select>
         <button type="button" class="fp-btn" id="sumBtn" onclick="toggleSummary()">📊 Ringkasan ▾</button>
+        <button type="button" class="fp-btn" id="delBtn" onclick="deleteMonth($('monthSel').value)" title="Hapus data stok bulan yang sedang dipilih" style="color:var(--red)">🗑 Hapus Bulan</button>
         <span class="chip" id="cloudChip">Mode lokal</span>
       </div>
       <div class="chip" id="infoChip"></div>
@@ -357,8 +358,9 @@ function parseSheet(ws){
       let a = numOrNull(r[c]), b = numOrNull(r[c + 1]); const s = numOrNull(r[c + 2]);
       if (s != null){
         const A = a || 0, B = b || 0;
-        if (a != null && b === s && prev[p] - A === s){ b = a; a = null; fixShift++; }        // kolom bergeser: (KLR, STOK, STOK) → MSK kosong
-        else if (prev[p] + A - B !== s){ const dl = s - prev[p]; a = dl > 0 ? dl : null; b = dl < 0 ? -dl : 0; fixDelta++; }   // tidak cocok: ikuti STOK SFA di file
+        if (prev[p] + A - B === s){ /* sudah benar: stok kemarin + MSK − KLR = STOK SFA */ }
+        else if (a != null && b === s && prev[p] - A === s){ b = a; a = null; fixShift++; }   // kolom bergeser: (KLR, STOK, STOK) → MSK kosong
+        else { const dl = s - prev[p]; a = dl > 0 ? dl : null; b = dl < 0 ? -dl : 0; fixDelta++; }   // tidak cocok: ikuti STOK SFA di file
       }
       prev[p] = s != null ? s : prev[p] + (a || 0) - (b || 0);
       arr.push(a, b);
@@ -398,9 +400,9 @@ async function processFiles(){
 }
 
 /* ===================== HAPUS / BUAT BULAN ===================== */
-function deleteMonth(){
-  const k = $('deleteMonth').value;
-  if (!k){ alert('Pilih bulan yang akan dihapus.'); return; }
+function deleteMonth(kk){
+  const k = (typeof kk === 'string' && kk) ? kk : $('deleteMonth').value;
+  if (!k || !S.months[k]){ alert('Pilih bulan yang akan dihapus.'); return; }
   const n = Object.keys(S.months[k].days || {}).length;
   if (!confirm('Hapus semua data stok bulan ' + monthLabel(k) + ' (' + n + ' hari terisi)?\n\nTindakan ini tidak bisa dibatalkan.')) return;
   delete S.months[k];
