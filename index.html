@@ -562,8 +562,9 @@ body.dark .s16table tr.bad td.sel{color:#fca5a5}
             <button type="button" class="tabs-toggle" id="tabsToggleBtn" onclick="toggleTabsMenu(event)"><span id="tabsToggleLabel">📑 Data Tab</span><span class="chev">▼</span></button>
             <div class="tabs tabs-collapsible" id="tabsMenu">
               <button onclick="show('s6',this)">Faktur</button>
+              <button onclick="s15OpenSub('aturan',this)">📜 Aturan Umum Gaji &amp; Bonus</button>
+              <button onclick="s15OpenSub('bonus',this)">🧮 Perhitungan Bonus</button>
               <button class="active" onclick="s15OpenSub('target',this)">🎯 Target &amp; Bonus Sales</button>
-              <button class="sub-item" onclick="s15OpenSub('aturan',this)">📜 Aturan Umum Gaji &amp; Bonus</button>
               <button onclick="show('s1',this)">Rekap Penjualan All Sales</button>
               <button onclick="show('s14',this)">Rekap Penjualan per Sales</button>
               <button onclick="show('s9',this)">Data Harga</button>
@@ -3066,7 +3067,7 @@ self.onmessage = function(e){
       + '<tr><td class="l" style="font-weight:700">3.</td><td class="l" colspan="3" style="font-weight:700">TARGET PENJUALAN PRODUK KHUSUS</td>' + kcell(okTxt(khusus.ok, khOn)) + '</tr>'
       + '</tbody></table></div>';
     const grand = '<div class="tsw-note" style="font-size:14px;margin-top:28px;padding-top:14px;border-top:2px solid var(--input-border)"><b>TOTAL NILAI BONUS = Rp ' + rn(K.grand) + '</b></div>';
-    return '<div class="tsw"><div class="tsw-title">PENJUALAN &amp; TARGET SALES</div><div class="tsw-meta"><span><select class="tsw-sel" onchange="tswSetSales(this.value)">' + ['SEMUA'].concat(SO).map(n => '<option' + (n === tswSales ? ' selected' : '') + '>' + n + '</option>').join('') + '</select><button type="button" class="bon-nav" onclick="tswGoSub(\'bonus\')">🧮 Perhitungan Bonus</button><button type="button" class="bon-nav" onclick="tswGoSub(\'aturan\')">📜 Aturan Umum Gaji &amp; Bonus</button></span><span>' + escHtml(periode) + '</span></div>'
+    return '<div class="tsw"><div class="tsw-title">PENJUALAN &amp; TARGET SALES</div><div class="tsw-meta"><span><select class="tsw-sel" onchange="tswSetSales(this.value)">' + ['SEMUA'].concat(SO).map(n => '<option' + (n === tswSales ? ' selected' : '') + '>' + n + '</option>').join('') + '</select><button type="button" class="bon-nav" onclick="tswGoSub(\'bonus\')">&larr; Perhitungan Bonus</button></span><span>' + escHtml(periode) + '</span></div>'
       + sub('TARGET QTY PENJUALAN :') + tblT + note
       + rupa + grand + kat + '</div>';
   }
@@ -3239,7 +3240,7 @@ self.onmessage = function(e){
       const title = '<div class="atr-h"><span class="no">' + (ti + 1) + '</span>' + (ed ? '<input class="atr-in tt" value="' + E(T.title) + '" onchange="aturanSetTitle(' + ti + ',this.value)"><button type="button" class="bon-nav" style="margin-left:0" onclick="aturanAddRow(' + ti + ')">+ Baris</button><button type="button" class="atr-x" style="padding:4px 10px" title="Hapus tabel" onclick="aturanDelTable(' + ti + ')">🗑 Hapus tabel</button>' : E(T.title)) + '</div>';
       return title + '<div class="tsw-scroll"><table class="tsw-t atr-t">' + head + body + '</table></div>' + notes;
     }).join('');
-    const bar = '<div class="tsw-meta"><span style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><button type="button" class="bon-nav" style="margin-left:0" onclick="tswGoSub(\'target\')">&larr; Target &amp; Bonus Sales</button><button type="button" class="bon-nav" style="margin-left:0" onclick="tswGoSub(\'bonus\')">🧮 Perhitungan Bonus</button>'
+    const bar = '<div class="tsw-meta"><span style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><button type="button" class="bon-nav" style="margin-left:0" onclick="tswGoSub(\'bonus\')">🧮 Perhitungan Bonus &rarr;</button>'
       + '<button type="button" class="bon-nav" style="margin-left:0" onclick="aturanToggleEdit()">' + (ed ? '✅ Selesai' : '✏️ Ubah') + '</button><button type="button" class="bon-nav" style="margin-left:0" onclick="aturanExportExcel()">💾 Simpan Excel</button></span><span>Aturan Umum Gaji &amp; Bonus</span></div>';
     const edbar = ed ? '<div class="atr-note" style="border-left-color:#16a34a;display:flex;flex-wrap:wrap;gap:8px;align-items:center"><b>Mode ubah:</b> klik isian untuk mengganti; perubahan tersimpan otomatis di perangkat ini.<button type="button" class="bon-nav" onclick="aturanAddTable()">+ Tambah Tabel Bonus</button><button type="button" class="bon-nav" onclick="aturanReset()">↺ Reset ke bawaan</button></div>' : '';
     return '<div class="tsw"><div class="tsw-title">' + (ed ? '<input class="atr-in tt" style="text-align:center;max-width:520px" value="' + E(A.judul) + '" onchange="aturanSetJudul(this.value)">' : E(A.judul)) + '</div>'
@@ -3341,7 +3342,7 @@ self.onmessage = function(e){
     s15Sub = v; viewCache['s15'] = null;
     document.body.classList.add('is-target');
     const p = document.getElementById('panel_s15'); if (p) { p.innerHTML = renderS15(); tswPaint(); }
-    const want = v === 'aturan' ? 'aturan' : 'target';
+    const want = v;
     document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('active', (x.getAttribute('onclick') || '').indexOf("s15OpenSub('" + want + "'") >= 0));
     requestAnimationFrame(function(){ const el = document.querySelector('#panel_s15 .tsw'); if (el) el.scrollIntoView({ block: 'start' }); });
   }
@@ -3411,7 +3412,7 @@ self.onmessage = function(e){
     const periode = filters.month ? monthLabel(filters.month) : 'Semua bulan';
     return '<div class="tsw"><div class="tsw-title">PERHITUNGAN BONUS</div><div class="tsw-meta"><span><select class="tsw-sel" onchange="tswSetSales(this.value)">'
       + ['SEMUA'].concat(SO).map(n => '<option' + (n === tswSales ? ' selected' : '') + '>' + n + '</option>').join('')
-      + '</select><button type="button" class="bon-nav" onclick="tswGoSub(\'target\')">&larr; Target &amp; Bonus Sales</button><button type="button" class="bon-nav" onclick="tswGoSub(\'aturan\')">📜 Aturan Umum Gaji &amp; Bonus</button></span><span>' + escHtml(periode) + '</span></div>'
+      + '</select><button type="button" class="bon-nav" onclick="tswGoSub(\'aturan\')">&larr; Aturan Umum Gaji &amp; Bonus</button><button type="button" class="bon-nav" onclick="tswGoSub(\'target\')">Target &amp; Bonus Sales &rarr;</button></span><span>' + escHtml(periode) + '</span></div>'
       + '<div class="tsw-sub" style="margin-top:24px">TARGET QTY PENJUALAN :</div>' + t1
       + t2
       + '<div class="tsw-note" style="font-size:14px;margin-top:36px;padding-top:14px;border-top:2px solid var(--input-border)"><b>TOTAL NILAI BONUS = Rp ' + rn(K.grand) + '</b></div></div>';
