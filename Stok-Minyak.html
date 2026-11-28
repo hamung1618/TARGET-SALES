@@ -137,7 +137,7 @@ input.in[type=number]{-moz-appearance:textfield}
             <div class="menu-label">📁 UPLOAD EXCEL STOK</div>
             <input id="file" type="file" accept=".xlsx,.xls" multiple>
             <button type="button" class="full" onclick="processFiles()">Proses Excel</button>
-            <div class="hint">Gunakan format file <b>Stok_Minyak_….xlsx</b> (kolom MSK, KLR, STOK SFA per botol; jumlah botol dibaca otomatis). Boleh upload beberapa file (per bulan), data digabung otomatis. Jika bulan yang sama diupload lagi, data bulan itu diganti.</div>
+            <div class="hint">Gunakan format file <b>Stok_Minyak_….xlsx</b> (kolom MSK, KLR, STOK SFA per botol; jumlah botol dibaca otomatis; urutan produk dirapikan otomatis dari ukuran kecil ke besar: 200 → 400 → 700 → 800 ML). Boleh upload beberapa file (per bulan), data digabung otomatis. Jika bulan yang sama diupload lagi, data bulan itu diganti.</div>
           </div>
 
           <div class="menu-section">
@@ -201,8 +201,30 @@ const SYNC_ROW_ID = 'stok_minyak';
 const LS_KEY = 'stokMinyak_v1', DIRTY_KEY = 'stokMinyakPendingPush_v1', MONTH_KEY = 'stokMinyakActiveMonth_v1';
 const BULAN = ['JANUARI','FEBRUARI','MARET','APRIL','MEI','JUNI','JULI','AGUSTUS','SEPTEMBER','OKTOBER','NOVEMBER','DESEMBER'];
 const HARI = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
-const DEF_NAMES = ['FITRI BOTOL 400 ML','FITRI BOTOL 200 ML','FITRI BOTOL 700 ML','FITRI BOTOL 800 ML'];
+const DEF_NAMES = ['FITRI BOTOL 200 ML','FITRI BOTOL 400 ML','FITRI BOTOL 700 ML','FITRI BOTOL 800 ML'];   // urutan rapi: kecil → besar
+const OLD_DEF_NAMES = ['FITRI BOTOL 400 ML','FITRI BOTOL 200 ML','FITRI BOTOL 700 ML','FITRI BOTOL 800 ML']; // urutan lama (hanya untuk data lama yang belum punya nama)
 const nP = m => (m && m.names && m.names.length) || DEF_NAMES.length;   // jumlah produk per bulan (dibaca dari Excel)
+/* Ukuran botol dari nama (200 ML → 200, 1 L → 1000). Tanpa ukuran → paling akhir. */
+const mlOf = n => { const t = String(n == null ? '' : n).toUpperCase().match(/(\d+(?:[.,]\d+)?)\s*(ML|LITER|LTR|LT|L)\b/); if (!t) return Infinity; const v = parseFloat(t[1].replace(',', '.')); return /^L/.test(t[2]) ? v * 1000 : v; };
+/* Rapikan urutan produk satu bulan (kecil → besar). names, saldo & days diputar bersama-sama. true = ada yang berubah. */
+function tidyMonth(m){
+  if (!m || typeof m !== 'object') return false;
+  const hadNames = !!(m.names && m.names.length);
+  const P = hadNames ? m.names.length : DEF_NAMES.length;
+  const names = hadNames ? m.names.slice() : OLD_DEF_NAMES.slice(0, P);
+  const order = names.map((n, i) => i).sort((a, b) => { const d = mlOf(names[a]) - mlOf(names[b]); return d ? d : a - b; });
+  if (hadNames && order.every((o, i) => o === i)) return false;
+  const sd = m.saldo || [], v = x => x === undefined ? null : x;
+  m.names = order.map(o => names[o]);
+  m.saldo = order.map(o => v(sd[o]));
+  if (m.days) Object.keys(m.days).forEach(d => {
+    const row = m.days[d] || [], out = [];
+    order.forEach(o => { out.push(v(row[o*2]), v(row[o*2+1])); });
+    m.days[d] = out;
+  });
+  return true;
+}
+function tidyAll(){ let ch = false; Object.keys(S.months || {}).forEach(k => { if (tidyMonth(S.months[k])) ch = true; }); return ch; }
 const colL = n => { let t = ''; while (n > 0){ const r = (n - 1) % 26; t = String.fromCharCode(65 + r) + t; n = Math.floor((n - 1) / 26); } return t; };
 
 /* ===================== STATE ===================== */
@@ -226,7 +248,7 @@ function toast(t){ const el = $('toast'); el.textContent = t; el.classList.add('
 function setStatus(t){ $('status').textContent = t || ''; }
 
 /* ===================== PENYIMPANAN LOKAL ===================== */
-function loadLocal(){ try { const r = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); if (r && r.months) S = r; } catch(e){} }
+function loadLocal(){ try { const r = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); if (r && r.months){ S = r; if (tidyAll()) saveLocal(); } } catch(e){} }
 function saveLocal(){ try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch(e){ toast('Penyimpanan lokal penuh / diblokir.'); } }
 function isDirty(){ try { return localStorage.getItem(DIRTY_KEY) === '1'; } catch(e){ return false; } }
 function setDirty(v){ try { if (v) localStorage.setItem(DIRTY_KEY, '1'); else localStorage.removeItem(DIRTY_KEY); } catch(e){} }
@@ -270,7 +292,9 @@ async function cloudPull(silent){
     const { data, error } = await sbClient.from('app_sync').select('data,updated_at').eq('id', SYNC_ROW_ID).maybeSingle();
     if (error) throw new Error(error.message);
     if (data && data.data && data.data.months){
-      S.months = data.data.months; saveLocal(); setDirty(false);
+      S.months = data.data.months;
+      const tidied = tidyAll(); saveLocal();
+      if (tidied){ setDirty(true); schedulePush(); } else setDirty(false);   // urutan produk dirapikan → kirim balik ke cloud
       refreshAll();
       if (!silent) toast('Data terbaru dari cloud dimuat.');
     } else if (Object.keys(S.months).length){
@@ -322,12 +346,23 @@ function parseSheet(ws){
   const hr = (mskRow > 0 && aoa[mskRow - 1]) || [];
   const names = cols.map((c, i) => (hr[c] != null && String(hr[c]).trim()) ? String(hr[c]).trim() : (DEF_NAMES[i] || 'PRODUK ' + (i + 1)));
   const saldo = cols.map(c => saldoRow >= 0 ? numOrNull((aoa[saldoRow] || [])[c + 2]) : null);
-  const days = {}; let y = null, m = null;
+  const days = {}; let y = null, m = null, fixShift = 0, fixDelta = 0;
+  const prev = saldo.map(v => v || 0);
   for (let i = Math.max(mskRow, saldoRow) + 1; i < aoa.length; i++){
     const r = aoa[i] || [], d = cellToDate(r[0]); if (!d) continue;
     if (y == null){ y = d.getUTCFullYear(); m = d.getUTCMonth() + 1; }
     if (d.getUTCFullYear() !== y || d.getUTCMonth() + 1 !== m) continue;   // mis. "31/11" otomatis dilewati
-    const arr = []; cols.forEach(c => { arr.push(numOrNull(r[c]), numOrNull(r[c + 1])); });
+    const arr = [];
+    cols.forEach((c, p) => {
+      let a = numOrNull(r[c]), b = numOrNull(r[c + 1]); const s = numOrNull(r[c + 2]);
+      if (s != null){
+        const A = a || 0, B = b || 0;
+        if (a != null && b === s && prev[p] - A === s){ b = a; a = null; fixShift++; }        // kolom bergeser: (KLR, STOK, STOK) → MSK kosong
+        else if (prev[p] + A - B !== s){ const dl = s - prev[p]; a = dl > 0 ? dl : null; b = dl < 0 ? -dl : 0; fixDelta++; }   // tidak cocok: ikuti STOK SFA di file
+      }
+      prev[p] = s != null ? s : prev[p] + (a || 0) - (b || 0);
+      arr.push(a, b);
+    });
     days[d.getUTCDate()] = arr;
   }
   if (y == null){
@@ -335,12 +370,15 @@ function parseSheet(ws){
     y = tahun; m = mi + 1;
   }
   if (!Object.keys(days).length) throw new Error('Tidak ada baris tanggal pada file.');
-  return { key: mkKey(y, m), data: { names, saldo, days } };
+  const data = { names, saldo, days };
+  tidyMonth(data);                                   // urutan produk: 200 → 400 → 700 → 800
+  const note = (fixShift || fixDelta) ? 'kolom MSK/KLR disesuaikan otomatis (' + (fixShift + fixDelta) + ' sel) mengikuti STOK SFA' : '';
+  return { key: mkKey(y, m), data, note };
 }
 async function processFiles(){
   const files = Array.from($('file').files || []);
   if (!files.length){ alert('Pilih file Excel terlebih dahulu.'); return; }
-  const ok = [], bad = [];
+  const ok = [], bad = [], notes = [];
   for (const f of files){
     try {
       const wb = XLSX.read(await f.arrayBuffer(), { type:'array' });
@@ -349,11 +387,12 @@ async function processFiles(){
       if (!res) throw lastErr || new Error('Format tidak dikenali.');
       const had = !!S.months[res.key];
       S.months[res.key] = res.data; ok.push(monthLabel(res.key) + (had ? ' (diganti)' : ''));
+      if (res.note) notes.push(monthLabel(res.key) + ': ' + res.note);
       activeMonth = res.key;
     } catch(e){ bad.push(f.name + ': ' + (e.message || e)); }
   }
   if (ok.length){ changed(); refreshAll(); closeDd(); $('file').value = ''; }
-  setStatus((ok.length ? 'Berhasil dimuat: ' + ok.join(', ') + '. ' : '') + (bad.length ? 'Gagal: ' + bad.join(' | ') : ''));
+  setStatus((ok.length ? 'Berhasil dimuat: ' + ok.join(', ') + '. ' : '') + (notes.length ? 'Catatan — ' + notes.join(' | ') + '. ' : '') + (bad.length ? 'Gagal: ' + bad.join(' | ') : ''));
   if (ok.length) toast(ok.length + ' bulan dimuat.');
   if (bad.length && !ok.length) alert('Gagal membaca file:\n\n' + bad.join('\n'));
 }
